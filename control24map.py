@@ -157,25 +157,25 @@ MAPPING_TREE = {
                             },
                             0x10: {
                                 'Address': 'ShowValues',
-                                'SetMode': '/track/c24scribstrip/pan',
+                                'SetMode': 'Values',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
                             0x11: {
                                 'Address': 'ShowGroup',
-                                'SetMode': '/track/number',
+                                'SetMode': 'Group',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
                             0x12: {
                                 'Address': 'ShowChannelNames',
-                                'SetMode': '/track/c24scribstrip/name',
+                                'SetMode': 'Names',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
                             0x13: {
                                 'Address': 'ShowInfo',
-                                'SetMode': '/track/c24scribstrip/volume',
+                                'SetMode': 'Info',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
@@ -608,17 +608,17 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x13: {
-                                'Address': 'Master Faders',
+                                'Address': 'MasterFaders',
                                 'Zone': 'Faders',
                                 'LED': True
                             },
                             0x1f: {
-                                'Address': 'Auto To Cur',
+                                'Address': 'AutoToCur',
                                 'Zone': 'Edit Tools',
                                 'LED': True
                             },
                             0x20: {
-                                'Address': 'Auto To All',
+                                'Address': 'AutoToAll',
                                 'Zone': 'Edit Tools',
                                 'LED': True
                             },
@@ -633,7 +633,7 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x21: {
-                                'Address': 'Esc/Cancel',
+                                'Address': 'EscCancel',
                                 'Zone': 'Utility',
                                 'LED': True
                             },
@@ -648,7 +648,7 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x19: {
-                                'Address': 'Edit / Bypass',
+                                'Address': 'EditBypass',
                                 'Zone': 'Groups',
                                 'LED': True
                             },
@@ -685,15 +685,15 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x04: {
-                                'Address': 'Post Roll',
+                                'Address': 'PostRoll',
                                 'LED': True
                             },
                             0x05: {
-                                'Address': 'Go To Start',
+                                'Address': 'GoToStart',
                                 'LED': True
                             },
                             0x06: {
-                                'Address': 'Go To End',
+                                'Address': 'GoToEnd',
                                 'LED': True
                             },
                             0x07: {
@@ -701,7 +701,7 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x08: {
-                                'Address': 'Ext Trans',
+                                'Address': 'ExtTrans',
                                 'LED': True
                             },
                             0x09: {
@@ -710,11 +710,11 @@ MAPPING_TREE = {
 
                             },
                             0x0a: {
-                                'Address': 'Loop Record',
+                                'Address': 'LoopRecord',
                                 'LED': True
                             },
                             0x0b: {
-                                'Address': 'Quick Punch',
+                                'Address': 'QuickPunch',
                                 'LED': True
                             },
                             0x0c: {  # oddly placed
@@ -773,17 +773,17 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x03: {
-                                'Address': 'Master Bypass',
+                                'Address': 'MasterBypass',
                                 'Zone': 'Inserts',
                                 'LED': True
                             },
                             0x04: {
-                                'Address': 'Inserts/Param',
+                                'Address': 'InsertsParam',
                                 'Zone': 'Inserts',
                                 'LED': True
                             },
                             0x09: {
-                                'Address': 'Plug-In Safe',
+                                'Address': 'Plug-InSafe',
                                 'Zone': 'Inserts',
                                 'LED': True
                             },
@@ -803,7 +803,7 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x08: {
-                                'Address': 'Esc/Cancel',
+                                'Address': 'EscCancel',
                                 'Zone': 'Assignment',
                                 'LED': True
                             },
@@ -813,47 +813,47 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x0b: {
-                                'Address': 'A/F',
+                                'Address': 'AF',
                                 'Zone': 'Sends',
                                 'LED': True
                             },
                             0x0c: {
-                                'Address': 'B/G',
+                                'Address': 'BG',
                                 'Zone': 'Sends',
                                 'LED': True
                             },
                             0x0d: {
-                                'Address': 'C/H',
+                                'Address': 'CH',
                                 'Zone': 'Sends',
                                 'LED': True
                             },
                             0x0e: {
-                                'Address': 'D/I',
+                                'Address': 'DI',
                                 'Zone': 'Sends',
                                 'LED': True
                             },
                             0x0f: {
-                                'Address': 'E/J',
+                                'Address': 'EJ',
                                 'Zone': 'Sends',
                                 'LED': True
                             },
                             0x10: {
-                                'Address': 'LCR/Front Div',
+                                'Address': 'LCR-Front Div',
                                 'Zone': 'Pans',
                                 'LED': True
                             },
                             0x11: {
-                                'Address': 'Rear/Rear Div',
+                                'Address': 'Rear-Rear Div',
                                 'Zone': 'Pans',
                                 'LED': True
                             },
                             0x12: {
-                                'Address': 'FR/FR Div',
+                                'Address': 'FR-FR Div',
                                 'Zone': 'Pans',
                                 'LED': True
                             },
                             0x13: {
-                                'Address': 'Cent%',
+                                'Address': 'Cent',
                                 'Zone': 'Pans',
                                 'LED': True
                             },
@@ -863,18 +863,18 @@ MAPPING_TREE = {
                                 'LED': True
                             },
                             0x17: {
-                                'Address': 'Left/Right',
+                                'Address': 'Left-Right',
                                 'Zone': 'Pans',
                                 'LED': True
                             },
                             0x14: {
                                 'Address': '<',
-                                'Zone': 'Channel Bar Scroll',
+                                'Zone': 'ChannelBarScroll',
                                 'LED': True
                             },
                             0x15: {
                                 'Address': '>',
-                                'Zone': 'Channel Bar Scroll',
+                                'Zone': 'ChannelBarScroll',
                                 'LED': True
                             }
                         }
@@ -944,16 +944,16 @@ MAPPING_TREE = {
                     },
                     0x0B: {
                         'Address': 'Peak',
-                        'Zone': 'Analogue Section',
+                        'Zone': 'AnalogueSection',
                         'LED': True
                     },
                     0x0C: {
-                        'Address': 'Source Toggle',
-                        'Zone': 'Analogue Section'
+                        'Address': 'SourceToggle',
+                        'Zone': 'AnalogueSection'
                     },
                     0x0D: {  # not in sm map
                         'Address': 'Roll Off',
-                        'Zone': 'Analogue Section'
+                        'Zone': 'AnalogueSection'
                     }
                 }
             }  # END Channel Strip Buttons

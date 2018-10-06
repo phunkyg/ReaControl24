@@ -41,15 +41,27 @@ TIME s/clock/time
 BEAT s/clock/beat
 
 METRONOME t/button/command/EditMode+Function+Banks/Select
+REPLACE t/button/command/Transport/Audition
 
 RECORD t/button/command/Transport/Record
 STOP b/button/command/Transport/Stop
 PLAY t/button/command/Transport/Play
 
+
+AUTO_REC_ARM t/button/command/utility_misc_meterselect_automationenable/master_rec
 SOLO_RESET b/button/command/utility_misc_meterselect_automationenable/SoloClear
+ANY_SOLO t/button/command/utility_misc_meterselect_automationenable/SoloSafe
 
 REWIND b/button/command/Transport/Rewind
 FORWARD b/button/command/Transport/Forward
+
+REWIND_FORWARD_SETLOOP t/button/command/Transport/LoopRecord
+#Following seems to have no effect
+REWIND_FORWARD_BYMARKER t/button/command/Transport/ExtTrans
+REPEAT t/button/command/Transport/LoopPlay
+
+#GOTO_MARKER b/button/command/@
+GOTO_REGION b/button/command/@
 
 SCRUB r/scrub
 PLAY_RATE r/playrate/rotary
@@ -82,6 +94,9 @@ TRACK_AUTO_WRITE t/track/c24automode/write/@
 
 FX_PRESET s/track/c24scribstrip/info/@
 FX_EQ_OPEN_UI t/button/track/EQ/@
+FX_INST_OPEN_UI t/button/track/Dynamics/@	
+#Next one doesn’t seem to work very well
+FX_OPEN_UI b/button/track/Inserts/@
 
 DEVICE_PREV_TRACK_BANK t/button/command/EditMode+Function+Banks/Left
 DEVICE_NEXT_TRACK_BANK t/button/command/EditMode+Function+Banks/Right
@@ -152,10 +167,7 @@ LAST_MARKER_NUMBER s/track/c24scribstrip/lmnu/31
 LAST_REGION_NAME s/track/c24scribstrip/lrna/30
 LAST_REGION_NUMBER s/track/c24scribstrip/lrnu/31
 
-
 TRACK_PAN_MODE s/track/c24scribstrip/pan_mode/@
-
-
 
 TRACK_AUTO s/track/c24scribstrip/auto/@
 
@@ -177,3 +189,6 @@ LAST_TOUCHED_FX_TRACK_NUMBER s/track/c24scribstrip/ltfxtnu/31
 LAST_TOUCHED_FX_NAME s/track/c24scribstrip/ltfxn/30
 LAST_TOUCHED_FX_NUMBER s/track/c24scribstrip/ltfxnu/31
 
+# added by Disruptormon - 28/09/18
+#ACTION action/40078 t/button/command/Window+ZoomPresets+Navigation/Mix
+#ACTION action/40259 t/button/command/Window+ZoomPresets+Navigation/Trans
