@@ -525,7 +525,9 @@ MAPPING_TREE = {
                             0x03: {
                                 'Address': 'Grid',
                                 'Zone': 'Edit Mode',
-                                'LED': True
+                                'LED': True,
+                                'Toggle': True,
+                                'CmdClass': 'C24buttonled'
                             },
                             0x04: {
                                 'Address': 'Cut',
