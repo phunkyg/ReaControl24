@@ -60,7 +60,7 @@ def findintree(obj, key):
     #TODO see if this will save having to
     # code button addresses twice
     if key in obj: return obj[key]
-    for k, v in obj.items():
+    for _, v in obj.items():
         if isinstance(v,dict):
             item = findintree(v, key)
             if item is not None:
@@ -112,6 +112,7 @@ class ModeManager(object):
         if self.is_valid_mode(mode):
             self.mode = mode
         else:
+            self.modes[mode] = { 'Address': mode }
             raise IndexError("That mode does not exist.")
 
     def is_valid_mode(self, mode):
@@ -143,6 +144,7 @@ class ModeManager(object):
             return msg
         else:
             return None
+
 
 # Classes representing Control24
 class C24base(object):
@@ -281,10 +283,28 @@ class C24desk(C24base):
     instances to help conversions and behaviour"""
     channels = 24
     busvus = 1
+    deskmodes = {
+        'Values': {
+            'address': '/track/c24scribstrip/volume',
+
+        },
+        'Group': {
+            'toggle': True
+        },
+        'Names': {
+            'address': '/track/c24scribstrip/name',
+            'default': True
+        },
+        'Info': {
+            'address': '/track/c24scribstrip/pan'
+        }
+    }
 
     def __init__(self, osc_client_send, c24_client_send):
-        # TODO original mode management to be deprecated
-        self.mode = DEFAULTS.get('scribble')
+        # DONE original mode management to be deprecated
+        # phunkyg 29/09/2-18
+        # self.mode = DEFAULTS.get('scribble')
+        self.modemgr = ModeManager(self.deskmodes)
         # passthrough methods
         self.osc_client_send = osc_client_send
         self.c24_client_send = c24_client_send
@@ -298,8 +318,9 @@ class C24desk(C24base):
 
     def set_mode(self, mode):
         LOG.debug('Desk mode set: %s', mode)
-        self.mode = mode
+        self.modemgr.set_mode(mode)
         for track in self.c24tracks:
+            track.modemgr.set_mode(mode)
             if hasattr(track, 'c24scribstrip'):
                 track.c24scribstrip.restore_desk_display()
 
@@ -329,7 +350,7 @@ class C24track(C24base):
     def __init__(self, desk, track_number):
         self.desk = desk
         self.track_number = track_number
-        self.mode = self.desk.mode
+        self.modemgr = ModeManager(self.desk.modemgr.modes)
         self.osctrack_number = track_number + 1
 
         if self.track_number < self.desk.channels:
@@ -594,7 +615,7 @@ class C24scribstrip(C24base):
 
     def __init__(self, track):
         self.track = track
-        self.mode = track.mode
+        self.mode = track.modemgr.get_data()
         defaulttext = '  {num:02d}'.format(num=self.track.track_number + 1)
         self.dtext4ch = defaulttext
         self.text = {'/track/number': defaulttext}
@@ -625,7 +646,8 @@ class C24scribstrip(C24base):
     def restore_desk_display(self):
         """ To be called in a delayed fashion
         to restore channel bar display to desk default"""
-        self.mode = self.track.desk.mode
+        #self.mode.set_mode(self.track.desk.mode)
+        self.mode = self.track.desk.modemgr.get_data().get('address')
         self.set_current_display()
 
     def transform_text(self):
@@ -1261,7 +1283,11 @@ class C24oscsession(object):
                 # If map indicates a mode is to be set then call the setter
                 set_mode = parsed_cmd.get('SetMode')
                 if set_mode:
-                    self.desk.mode = set_mode
+                    #Suspect commented out line was a bug preventing proper desk wide scriblle updates.
+                    #should have been calling set mode function not setting object.
+                    #@phunkyg 29/09/18
+                    self.desk.set_mode(set_mode)
+                    #self.desk.mode = set_mode
 
                 # CLASS based Desk-Daw, where complex logic is needed so encap. in class
                 cmd_class = parsed_cmd.get('CmdClass')
@@ -1543,7 +1569,7 @@ def main():
 
     # Parse and verify options
     # TODO move to argparse and use that to verify
-    (opts, args) = oprs.parse_args()
+    (opts, _) = oprs.parse_args()
     if not networks.verify_ip(opts.listen.split(':')[0]):
         raise OptionError('No network has the IP address specified.', 'listen')
 
