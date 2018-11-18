@@ -46,7 +46,7 @@ TIMING_WAIT_OSC_LISTENER = 4
 TIMING_OSC_LISTENER_RESTART = 1
 TIMING_OSC_CLIENT_RESTART = 1
 TIMING_OSC_CLIENT_LOOP = 4
-TIMING_SCRIBBLESTRIP_RESTORE = 4
+TIMING_SCRIBBLESTRIP_RESTORE = 1
 TIMING_FADER_ECHO = 0.1
 
 SESSION = None
@@ -620,6 +620,7 @@ class C24scribstrip(C24base):
         self.dtext4ch = defaulttext
         self.text = {'/track/number': defaulttext}
         self.cmdbytes = (c_ubyte * 12)()
+        self.last_update = time.time()
 
         self.restore_timer = threading.Timer(
             float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
@@ -674,13 +675,15 @@ class C24scribstrip(C24base):
         if address == self.mode:
             self.set_current_display()
         else:
-            self.mode = address
-            self.set_current_display()
-            if self.restore_timer.isAlive:
-                self.restore_timer.cancel()
-            self.restore_timer = threading.Timer(
-                float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
-            self.restore_timer.start()
+            if time.time() - self.last_update >  TIMING_SCRIBBLESTRIP_RESTORE:
+                self.mode = address
+                self.set_current_display()
+                if self.restore_timer.isAlive:
+                    self.restore_timer.cancel()
+                self.restore_timer = threading.Timer(
+                    float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
+                self.restore_timer.start()
+
 
 
 class C24jpot(C24base):
