@@ -1231,12 +1231,12 @@ class C24oscsession(object):
                 parsedcmd["addresses"].append('/')
                 parsedcmd["addresses"].append(lkp["Address"])
             parsedcmd.update(
-                {key: lkp[key] for key in lkp if any(
-                    ["Byte" in key],
-                    ["Class" in key],
-                    ["SetMode" in key],
-                    ["Toggle" in key]
-                )}
+                {key: lkp[key] for key in lkp if any([
+                    "Byte" in key,
+                    "Class" in key,
+                    "SetMode" in key,
+                    "Toggle" in key
+                ])}
             )
             if 'ChildByte' in lkp:
                 this_byte_num = lkp['ChildByte']
@@ -1434,11 +1434,7 @@ class C24oscsession(object):
 
         while not self.is_closing:
             self.osc_client = OSC.OSCClient()
-            while any(
-                    [self.osc_listener is None],
-                    [self.osc_listener_last is None],
-                    [not self.osc_listener.running]
-                ):
+            while self.osc_listener is None or self.osc_listener_last is None or not self.osc_listener.running:
                 LOG.debug(
                     'Waiting for the OSC listener to get a client %s', self.osc_listener_last)
                 time.sleep(TIMING_WAIT_OSC_LISTENER)
