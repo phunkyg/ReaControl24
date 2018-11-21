@@ -2,6 +2,7 @@
 
 import binascii
 import datetime
+import tempfile
 import logging
 import optparse
 import os
@@ -40,7 +41,7 @@ DEFAULTS = {
     'loglevel':logging.INFO,
     'interface':'en0',
     'scribble':'/track/c24scribstrip/name',
-    'logdir':'./logs',
+    'logdir':'ReaControl24',
     'logformat':'%(asctime)s\t%(name)s\t%(levelname)s\t' +
                 '%(threadName)s\t%(funcName)s\t%(lineno)d\t%(message)s'
 }
@@ -59,49 +60,35 @@ def tick():
     """Wrapper for a common definition of execution seconds"""
     return time.time()
 
-def fix_ownership(path):
-    """Change the owner of the file to SUDO_UID"""
-
-    uid = os.environ.get('SUDO_UID')
-    gid = os.environ.get('SUDO_GID')
-    if uid is not None:
-        os.chown(path, int(uid), int(gid))
-
 def start_logging(name, logdir, debug=False):
     """Configure logging for the program"""
     # Set logging
     logformat = DEFAULTS.get('logformat')
     loghead = ''.join(c for c in logformat if c not in '$()%')
-    # Get the root logger and set up outputs for stderr
-    # and a log file in the CWD
-    if not os.path.exists(logdir):
-        try:
-            original_umask = os.umask(0)
-            os.makedirs(logdir, 0o666)
-            fix_ownership(logdir)
-        finally:
-            os.umask(original_umask)
-
+    if any([not logdir, not os.path.exists(logdir)]):
+        ldir = tempfile.mkdtemp("ReaControl24")
+    else:
+        ldir = logdir
+    logfile = os.path.join(ldir, '{}.log.{:%d_%m.%H_%M}.csv'.format(
+        name,
+        datetime.datetime.now()))
     root_logger = logging.getLogger(name)
     if debug:
         root_logger.setLevel(logging.DEBUG)
     else:
         root_logger.setLevel(DEFAULTS.get('loglevel'))
-    log_f = logging.FileHandler('{}/{}.log.{:%d_%m.%H_%M}.csv'.format(
-        logdir,
-        name,
-        datetime.datetime.now()))
+    log_s = logging.StreamHandler()
+    root_logger.addHandler(log_s)
+    root_logger.info('Logfile for this session:\n%s', logfile)
+    log_f = logging.FileHandler(logfile)
     root_logger.addHandler(log_f)
     # First line be the header
     root_logger.info(loghead)
     # Subsequent lines get formatted
     log_formatter = logging.Formatter(logformat)
     log_f.setFormatter(log_formatter)
-    log_s = logging.StreamHandler()
     # if this inherits root logger level then remove else put back: log_s.setLevel()
-    root_logger.addHandler(log_s)
     return root_logger
-
 
 def opts_common(desc):
     """Set up an opts object with options we use everywhere"""
@@ -126,14 +113,11 @@ def opts_common(desc):
     oprs.set_defaults(debug=False, logdir=logdir)
     return oprs
 
-
-
 def hexl(inp):
     """Convert to hex string using binascii but
     then pretty it up by spacing the groups"""
     shex = binascii.hexlify(inp)
     return ' '.join([shex[i:i+2] for i in range(0, len(shex), 2)])
-
 
 
 class NetworkHelper(object):
@@ -147,7 +131,7 @@ class NetworkHelper(object):
         return '\n'.join(['{} {}'.format(
             key,
             data.get('name') or '')
-            for key, data in self.networks.iteritems()])
+                          for key, data in self.networks.iteritems()])
 
     def get_default(self):
         """return the name and first ip of whichever adapter
@@ -173,8 +157,8 @@ class NetworkHelper(object):
         """search for an adapter that has the ip address supplied"""
         for key, data in self.networks.iteritems():
             if data.has_key('ip'):
-                for ip in data['ip']:
-                    if ip.get('addr') == ipstr:
+                for ipadr in data['ip']:
+                    if ipadr.get('addr') == ipstr:
                         return key
         return None
 
@@ -183,10 +167,11 @@ class NetworkHelper(object):
         """Use netifaces to retrieve ip address, but handle if it doesn't exist"""
         try:
             addr_l = netifaces.ifaddresses(ifname)[netifaces.AF_INET]
-            return [{k: v.encode('ascii', 'ignore') for k, v in addr.iteritems()} for addr in addr_l]
+            return [{k: v.encode('ascii', 'ignore')
+                     for k, v in addr.iteritems()} for addr in addr_l]
         except KeyError:
             return None
-    
+
     @staticmethod
     def get_mac_address(ifname):
         """Use netifaces to retrieve mac address, but handle if it doesn't exist"""
@@ -234,7 +219,9 @@ class NetworkHelper(object):
             ips = NetworkHelper.get_ip_address(interface)
             if ips:
                 inner['ip'] = ips
-                if default_not_found and any([ip.has_key('addr') and not ip.has_key('peer') for ip in ips]):
+                if default_not_found and any(
+                        [ip.has_key('addr') and not ip.has_key('peer') for ip in ips]
+                    ):
                     default_not_found = False
                     inner['default'] = True
             results[interface] = inner
@@ -244,12 +231,11 @@ class NetworkHelper(object):
 
     @staticmethod
     def ipstr_to_tuple(ipstr):
+        """return a tuple from a string ip and port"""
         ipsplit = ipstr.split(':')
         return (ipsplit[0], int(ipsplit[1]))
-    
+
     @staticmethod
     def ipstr_from_tuple(ipaddr, ipport):
         """from ip and port provide a string with ip:port"""
         return '{}:{}'.format(ipaddr, ipport)
-
-

@@ -5,25 +5,11 @@ Control24 digital control surface protocol middleware for Reaper.
 This middleware allows you to use the Digidesign Control24 hardware with Reaper. 
 It will allow you to establish communication between the Control24 hardware and Reaper.OSC or any other similar DAW with OSC capability.
 It will bring the Control24 online and provide 2 way communiation with it, so you can control the DAW by using the Control24 buttons, faders and pots, and the DAW can update the Control24 fader positions, LEDs and displays.
-
-
-# How it Works
-
-The Ethernet packets are captured using a Packet Capture utility, sometimes know as a 'network sniffer'.
-Only packets for the Control24 are captured, all normal network traffice is ignored.
-ReaControl's 'daemon' process then deals with this network traffic, and passes it to its 'client' process.
-The 'client' process translates the Control24's binary language to OSC and vice-versa, passing binary messages back to the 'daemon' process which then sends them back as network packets to the Control24.
-Finally, the OSC messages are sent as normal TCP/IP packets to the Reaper.OSC extension, which drives the DAW, according to the mappings found in the control file, OR in the Actions list. Return OSC messages are sent back to the 'client' process for the return trip, again as normal TCP/IP packets.
-
-Each component can be on a separate computer, or all on the same one.
-
-Some basic stateful mode handling is provided by the 'client' process to receive text from the DAW and display it on the scribble strips, handle controls which can toggle, and deal with issues like fader command echos.
-
-You will need super user (or elevated Administrator in Windows) privileges to use this software (specifically the daemon process'), as it uses packet capture libraries (libpcap / npcap) to establish network connectivity with the Control24 ethernet interface. All other TCP and UDP traffic is ignored/filtered out, so you should not have any privacy concerns if the source has not been tampered with.
+ReaControl24 isn't a Reaper plugin (yet) but is designed to work with Reaper. There is nothing to stop you using it in a wider OSC setup or with a different DAW that supports OSC.
 
 ### Installing - OSX, macos, Linux
 
-Ensure the current or default python environment has a 2.x interpreter in the current path (enter 'python' at the command line), and install the pre-requisites into user environment using pip or similar
+Ensure the current or default python environment has a 2.7.x interpreter in the current path (enter 'python' at the command line), and install the pre-requisites into user environment using pip or similar
 
 Example pip install
 
@@ -31,13 +17,13 @@ Example pip install
 pip install -r requirements.txt --user
 ```
 
-By default all log outputs will be created into a subdirectory below wherever you install the files, so choose somewhere that this can happen without issues
+By default all log outputs will be created into the temp location for your platform and user. This will vary according to your platform, so the logfile names are also output to the screen for convenience.
 
 Some older python installations in OSX do cause issues as they pre-date upgrades in the python security/encryption, so please ensure you are at the highest OS level you can be, and if that is not enough, you can find guides online on how to make the changes you need to python, or to install a second python environment just for ReaControl.
 
 ### Installing - Windows 10
 
-The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process at: http://TODO
+The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process in the docs subfolder in the repository.
 
 * Download and install latest 64 bit Python 2.7.x - https://www.python.org/downloads
 * Download and install Npcap ensuring to tick the WinPcap API-compatible mode which is off by default - https://nmap.org/npcap/
@@ -80,25 +66,39 @@ When supplying a network name, either the name or the GUID will work. If you are
 
 ## Getting Started
 
-Copy the files to your system in a reasonable spot (your REAPER Scripts directory for example) where you will be able to run the python programs and log files can be created.
+Unzip/Copy the files to your system in a reasonable spot (your REAPER Scripts directory, or just your documents folder for example) where you will be able to run the python programs.
 For a quick start, if your DAW and Control24 are on the same LAN, and you intend to run this middleware on your DAW PC:
 
-Copy the provided Reaper.OSC file into the correct directory on your system for such files. You will find a convenient button in the reaper dialogs to find this for you when configuring the csurf plugin.
-
-Start REAPER DAW and configure the Control Surface OSC Plugin. Use your local IP address (not localhost or 0.0.0.0)
-Set ports as client 9124 and listener 9125.
-
-Start the deamon process with (yes you DO need sudo, or for windows omit sudo and use Administrator command prompt):
-
+*Start REAPER DAW and configure the Control Surface OSC Plugin:
+    *Reaper > Preferences > Control/OSC/web
+    *First time, click 'Add' and select Control Surface Mode 'OSC (Open Sound Control)'
+    *Device name: Control24
+    *Mode: Configure device IP+local port
+    *Device port: 9124
+    *Device IP: Your local IP address (not localhost or 0.0.0.0)
+    *Local listen port: 9125
+    *Local IP: same as Device IP
+    *Allow binding...: tick
+*Click the 'Pattern Config' selector and you will find an option 'Open config directory'.
+*Copy the provided Reaper.OSC file into the directory that reaper opened.
+    *For example, on OSX, you could copy using the terminal with
+```
+cp Control24.ReaperOSC "~/Library/Application Support/REAPER/OSC/Control24.ReaperOSC"
+```
+    ...or use your file manager to perform the same file copy.
+*Going back to the Reaper OSC dialog, click 'Pattern Config' and this time 'Refresh List'
+*Click 'Pattern Config' one last time, now you can select the new entry 'Control24'
+*Start the daemon process with (yes you DO need sudo, or for windows omit sudo and use Administrator command prompt):
 ```
 sudo python control24d.py
 ```
-
-Start the osc client process with:
-
+*Start the osc client process with:
 ```
 python control24osc.py
 ```
+*Now load up a project in Reaper and try a few controls like faders and pots
+*If Reaper moves the faders on the Control24 and vice-versa, you are good to go
+*If not, check all the network IP and ports match up, you may need to specify a preferred adapter or address - see below
 
 ### Advanced options
 
@@ -123,6 +123,20 @@ Npcap SDK
 Microsoft C++ compiler for Python
 ```
 
+# How it Works
+
+The Ethernet packets are captured using a Packet Capture utility, sometimes know as a 'network sniffer'.
+Only packets for the Control24 are captured, all normal network traffice is ignored.
+ReaControl's 'daemon' process then deals with this network traffic, and passes it to its 'client' process.
+The 'client' process translates the Control24's binary language to OSC and vice-versa, passing binary messages back to the 'daemon' process which then sends them back as network packets to the Control24.
+Finally, the OSC messages are sent as normal TCP/IP packets to the Reaper.OSC extension, which drives the DAW, according to the mappings found in the control file, OR in the Actions list. Return OSC messages are sent back to the 'client' process for the return trip, again as normal TCP/IP packets.
+
+Each component can be on a separate computer, or all on the same one.
+
+Some basic stateful mode handling is provided by the 'client' process to receive text from the DAW and display it on the scribble strips, handle controls which can toggle, and deal with issues like fader command echos.
+
+You will need super user (or elevated Administrator in Windows) privileges to use this software (specifically the daemon process'), as it uses packet capture libraries (libpcap / npcap) to establish network connectivity with the Control24 ethernet interface. All other TCP and UDP traffic is ignored/filtered out, so you should not have any privacy concerns if the source has not been tampered with.
+
 ### Compatibility
 
 Although ReaControl24 is written in python, it depends on certain libraries like pypcap, that can vary from platform to platform. Testing of various platforms is ongoing, status at this time is:
@@ -143,7 +157,7 @@ Please let us know if you try another, we will update our list or help with any 
 
 By default, the daemon will attempt to use the first active Ethernet adapter found in the system. It will also set up its listener on the first IP address of that adapter.
 The OSC client will do much the same, but it will only use the IP address as it doesn't require the network adapter name.
-Log files will be created in a 'logs' subdirectory relative to where the processes are ran from.
+Log files will be created in a new subdirectory in the users temp directory. This will vary according to your platform and username.
 
 All this can be changed by use of command line parameters. Use the --help switch to get the current definition and defaults.
 
@@ -227,4 +241,3 @@ All other intellectual property rights remain with the original owners.
 ## Acknowledgments
 
 * **2mmi** - *Initial Idea, inspiration and saviour of us all
-
