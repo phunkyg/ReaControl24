@@ -147,7 +147,7 @@ class NetworkHelper(object):
         return '\n'.join(['{} {}'.format(
             key,
             data.get('name') or '')
-            for key, data in self.networks.iteritems()])
+                          for key, data in self.networks.iteritems()])
 
     def get_default(self):
         """return the name and first ip of whichever adapter
@@ -173,8 +173,8 @@ class NetworkHelper(object):
         """search for an adapter that has the ip address supplied"""
         for key, data in self.networks.iteritems():
             if data.has_key('ip'):
-                for ip in data['ip']:
-                    if ip.get('addr') == ipstr:
+                for ipaddr in data['ip']:
+                    if ipaddr.get('addr') == ipstr:
                         return key
         return None
 
@@ -183,10 +183,12 @@ class NetworkHelper(object):
         """Use netifaces to retrieve ip address, but handle if it doesn't exist"""
         try:
             addr_l = netifaces.ifaddresses(ifname)[netifaces.AF_INET]
-            return [{k: v.encode('ascii', 'ignore') for k, v in addr.iteritems()} for addr in addr_l]
+            return [{k: v.encode('ascii', 'ignore')
+                     for k, v in addr.iteritems()}
+                    for addr in addr_l]
         except KeyError:
             return None
-    
+
     @staticmethod
     def get_mac_address(ifname):
         """Use netifaces to retrieve mac address, but handle if it doesn't exist"""
@@ -246,10 +248,8 @@ class NetworkHelper(object):
     def ipstr_to_tuple(ipstr):
         ipsplit = ipstr.split(':')
         return (ipsplit[0], int(ipsplit[1]))
-    
+
     @staticmethod
     def ipstr_from_tuple(ipaddr, ipport):
         """from ip and port provide a string with ip:port"""
         return '{}:{}'.format(ipaddr, ipport)
-
-
