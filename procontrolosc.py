@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-"""Control24 to Reaper.OSC client. Communicate between the daemon
+"""Pro Control to Reaper.OSC client. Communicate between the daemon
 process and an OSC Client/Listener pair, tuned for Reaper DAW.
 Other, similar clients can be written to communicate with other
 protocols such as MIDI HUI, Mackie etc.
+
+IN DEVELOPMENT / EXPERIMENTAL
 """
 
 import binascii

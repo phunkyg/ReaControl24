@@ -17,7 +17,7 @@ from optparse import OptionError
 import pcap
 
 from control24common import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
-                             opts_common, start_logging, tick)
+                             opts_common, start_logging, tick, SIGNALS)
 
 '''
     This file is part of ReaControl24. Control Surface Middleware.
@@ -634,7 +634,8 @@ def main():
     # Main thread when everything is initiated. Wait for interrupt
     if sys.platform.startswith('win'):
         # Set up Interrupt signal handler so daemon can close cleanly
-        signal.signal(signal.SIGINT, signal_handler)
+        for sig in SIGNALS:
+            signal.signal(sig, signal_handler)
         while True:
             try:
                 time.sleep(TIMING_MAIN_LOOP)

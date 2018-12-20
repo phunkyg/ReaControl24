@@ -7,6 +7,7 @@ import optparse
 import os
 import time
 import sys
+import signal
 
 import netifaces
 
@@ -49,6 +50,8 @@ COMMANDS = {
     'ack': 0xA0,
     'online': 0xE2
 }
+
+SIGNALS = [signal.SIGINT, signal.SIGABRT, signal.SIGTERM]
 
 CHANNELS = 24
 FADER_RANGE = 2**10
@@ -147,7 +150,7 @@ class NetworkHelper(object):
         return '\n'.join(['{} {}'.format(
             key,
             data.get('name') or '')
-            for key, data in self.networks.iteritems()])
+                          for key, data in self.networks.iteritems()])
 
     def get_default(self):
         """return the name and first ip of whichever adapter
