@@ -213,6 +213,7 @@ class NetworkHelper(object):
             net_regkey = r'{}\Connection'.format(key)
             try:
                 net_key = wr.OpenKey(reg_key, net_regkey)
+                # Probably need to filter on MediaSubType here to only ask for ethernet
                 net_name = wr.QueryValueEx(net_key, 'Name')[0]
                 if net_name:
                     val['name'] = net_name
