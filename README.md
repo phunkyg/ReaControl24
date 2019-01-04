@@ -37,19 +37,26 @@ Some older python installations in OSX do cause issues as they pre-date upgrades
 
 ### Installing - Windows 10
 
-The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process at: http://TODO
+The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process [in the doc subfolder](/doc/Windows_Setup.mp4)
 
-* Download and install latest 64 bit Python 2.7.x - https://www.python.org/downloads
-* Download and install Npcap ensuring to tick the WinPcap API-compatible mode which is off by default - https://nmap.org/npcap/
-    * Current version of Main Installer: https://nmap.org/npcap/dist/npcap-0.99-r7.exe
+* Download and install latest 64 bit Python 2.7.x
+    * General Download Page: https://www.python.org/downloads
+    * Windows 64 bit 3.7.2 Web Installer: https://www.python.org/ftp/python/3.7.2/python-3.7.2-amd64-webinstall.exe
+    * It is recommended to install python in the system drive, in a subfolder e.g. C:\python
+    * In the installer options, at a minimum ensure that the following are set:
+        * Install pip
+        * Install for all users
+* Download and install Npcap ensuring to tick the WinPcap API-compatible mode which is off by default
+    * Home Page: https://nmap.org/npcap/
+    * Current version of Main Installer: https://nmap.org/npcap/dist/npcap-0.99-r8.exe
 * Download the Npcap SDK
     * Current version of SDK Download: https://nmap.org/npcap/dist/npcap-sdk-0.1.zip
-* Download and install the c++ compiler for python - https://www.microsoft.com/en-us/download/details.aspx?id=44266
-* Download the sources from github for: pypcap - https://github.com/pynetwork/pypcap/releases - currently 1.2.1
+* Download and install the c++ compiler for python: https://www.microsoft.com/en-us/download/details.aspx?id=44266
+* Download the sources from github for: pypcap (currently 1.2.1): https://github.com/pynetwork/pypcap/releases - 
 
 (Following is a re-statement of the procedure for 'installation from sources' of pypcap found at - https://github.com/pynetwork/pypcap/blob/master/docs/index.rst)
 
-Choose a folder to work in: The 'install' subfolder of ReaControl24 is a reasonable choice.
+Choose a folder to work in: Creating an 'install' subfolder under where you unpacked this repo (ReaControl24) is a reasonable choice.
 
 * Unzip the pypcap download into the chosen install folder. 
     * Check if the zip made 2 folders called 'pypcap-1.2.0' or similar, one within the other. If so, move the inner one down a level so it sits under 'install'
@@ -74,8 +81,8 @@ Installed c:\python27\lib\site-packages\pypcap-1.2.0-py2.7-win-amd64.egg
 pip install -r requirements.txt -U
 ```
 
-When complete, to run the daemon, rather than using 'sudo', use an 'Administrator command prompt' and omit the sudo
-When supplying a network name, either the name or the GUID will work. If you are struggling to find the right value, use the --help command line switch and the program will list them for you.
+When complete, to run the daemon, rather than using 'sudo', use an 'Administrator command prompt' and omit the sudo from the command line.
+When supplying a network name, either the name (as it appears in the Windows network control panel settings) or the GUID will work. If you are struggling to find the right value, use the -n command line switch with a junk/bad value and the program will fail, but will list all your network adapter GUID and Names for you.
 
 
 ## Getting Started
