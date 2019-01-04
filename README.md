@@ -50,6 +50,7 @@ The pre-requisite installation process for Windows is quite a bit more involved,
     * Home Page: https://nmap.org/npcap/
     * Current version of Main Installer: https://nmap.org/npcap/dist/npcap-0.99-r8.exe
     * Make sure to tick the _WinPcap API-compatible mode_ which is off by default
+    * Don't install the loopback adapter unless you want it for another need
 * Download the Npcap SDK
     * Current version of SDK Download: https://nmap.org/npcap/dist/npcap-sdk-0.1.zip
 * Download and install the c++ compiler for python: https://www.microsoft.com/en-us/download/details.aspx?id=44266
