@@ -41,14 +41,15 @@ The pre-requisite installation process for Windows is quite a bit more involved,
 
 * Download and install latest 64 bit Python 2.7.x
     * General Download Page: https://www.python.org/downloads
-    * Windows 64 bit 3.7.2 Web Installer: https://www.python.org/ftp/python/3.7.2/python-3.7.2-amd64-webinstall.exe
+    * Windows 64 bit 2.7.13 Web Installer: https://www.python.org/ftp/python/2.7.13/python-2.7.13.amd64.msi
     * It is recommended to install python in the system drive, in a subfolder e.g. C:\python
     * In the installer options, at a minimum ensure that the following are set:
         * Install pip
         * Install for all users
-* Download and install Npcap ensuring to tick the WinPcap API-compatible mode which is off by default
+* Download and install Npcap 
     * Home Page: https://nmap.org/npcap/
     * Current version of Main Installer: https://nmap.org/npcap/dist/npcap-0.99-r8.exe
+    * Make sure to tick the _WinPcap API-compatible mode_ which is off by default
 * Download the Npcap SDK
     * Current version of SDK Download: https://nmap.org/npcap/dist/npcap-sdk-0.1.zip
 * Download and install the c++ compiler for python: https://www.microsoft.com/en-us/download/details.aspx?id=44266
