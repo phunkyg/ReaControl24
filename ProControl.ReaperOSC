@@ -67,6 +67,8 @@ TRACK_SELECT t/button/track/ChannelSelect/@
 TRACK_VOLUME n/track/c24fader/@ s/track/c24scribstrip/volume/@
 TRACK_PAN n/track/c24vpot/@ s/track/c24scribstrip/pan/@
 
+TRACK_VOLUME_TOUCH b/button/track/Touch/@
+
 TRACK_VU_L n/track/c24vumeter/0/@
 TRACK_VU_R n/track/c24vumeter/1/@
 
