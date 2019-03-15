@@ -90,6 +90,9 @@ When supplying a network name, either the name (as it appears in the Windows net
 ## Getting Started
 
 Copy the files to your system in a reasonable spot (your REAPER Scripts directory for example) where you will be able to run the python programs and log files can be created.
+
+Create the 'log' folder inside the same folder as the scripts and ensure it can be written to. (Note: See the DEV_TempFiles branch currently being tested for an alternative that uses TEMP folders)
+
 For a quick start, if your DAW and Control24 are on the same LAN, and you intend to run this middleware on your DAW PC:
 
 Copy the provided Reaper.OSC file into the correct directory on your system for such files. You will find a convenient button in the reaper dialogs to find this for you when configuring the csurf plugin.
