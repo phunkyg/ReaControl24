@@ -21,17 +21,35 @@ Some basic stateful mode handling is provided by the 'client' process to receive
 
 You will need super user (or elevated Administrator in Windows) privileges to use this software (specifically the daemon process'), as it uses packet capture libraries (libpcap / npcap) to establish network connectivity with the Control24 ethernet interface. All other TCP and UDP traffic is ignored/filtered out, so you should not have any privacy concerns if the source has not been tampered with.
 
+## Installing - General
+
+ReaControl24 doesn't have an installer, to get it running you need the following from this overview. Later sections detail how to complete each:
+
+* The source file download from github
+    * A directory/folder where this can be unpacked to and run by python
+    * A writeable log subdirectory/folder
+* A Python 2.7x interpreter
+    * The required python libraries available in the same environment (requirements.txt)
+    * For windows, NPCAP installed
+    * For late versions of MacOS and linux the system supplied one should be fine
+* Reaper
+    * Reaper.OSC configured to connect to ReaControl24
+* 2 command shell/terminal windows to run it in
+    * One of these must be elevated i.e. able to SUDO / Be Windows Admin
+* A Control24 connected to the same network as the PC
+    * You might need to know the name of the PC's network adapter that is connected to this network
+
 ### Installing - OSX, macos, Linux
 
-Ensure the current or default python environment has a 2.x interpreter in the current path (enter 'python' at the command line), and install the pre-requisites into user environment using pip or similar
+Ensure the current or default python environment has a 2.x interpreter in the current path (enter 'python' at the command line to check), and install the pre-requisites into user environment using pip or similar
 
-Example pip install
+Example pip install command line:
 
 ```
 pip install -r requirements.txt --user
 ```
 
-By default all log outputs will be created into a subdirectory below wherever you install the files, so choose somewhere that this can happen without issues
+By default all log outputs will be created into the *logs* subdirectory below wherever you unpack/install the files, so choose somewhere that this can happen without issues.
 
 Some older python installations in OSX do cause issues as they pre-date upgrades in the python security/encryption, so please ensure you are at the highest OS level you can be, and if that is not enough, you can find guides online on how to make the changes you need to python, or to install a second python environment just for ReaControl.
 
@@ -91,30 +109,57 @@ When supplying a network name, either the name (as it appears in the Windows net
 
 Copy the files to your system in a reasonable spot (your REAPER Scripts directory for example) where you will be able to run the python programs and log files can be created.
 
-Create the 'log' folder inside the same folder as the scripts and ensure it can be written to. (Note: See the DEV_TempFiles branch currently being tested for an alternative that uses TEMP folders)
-
 For a quick start, if your DAW and Control24 are on the same LAN, and you intend to run this middleware on your DAW PC:
 
-Copy the provided Reaper.OSC file into the correct directory on your system for such files. You will find a convenient button in the reaper dialogs to find this for you when configuring the csurf plugin.
-
-Start REAPER DAW and configure the Control Surface OSC Plugin. Use your local IP address (not localhost or 0.0.0.0)
-Set ports as client 9124 and listener 9125.
-
-Start the deamon process with (yes you DO need sudo, or for windows omit sudo and use Administrator command prompt):
-
+* Set up Reaper.OSC for your environment. See the additional guide below for details.
+* For windows start one Administrator command prompt, for other OS a normal terminal will do and use 'sudo'. 
+* Run the *daemon process*
 ```
 sudo python control24d.py
 ```
-
-Start the osc client process with:
-
+* In another terminal/cmd prompt, run the *client process*:
 ```
 python control24osc.py
 ```
+* You should see a little feedback in each window as each component connects to the others
+* If you have problems:
+    * try adding the debug switch (-d) to the command lines to get much more feedback
+    * The Log files will also contain a detailed CSV version of what you see
+    * If your network addresses and ports aren't right, try supplying the network switch on the daemon process (-n) with a rubbish name. This will dump a list of valid networks to help you choose.
+```
+sudo python control24d.py -n NO_NETWORK
+```
+
+### How to set up Reaper.OSC
+
+Setting up Reaper.OSC is detailed in the Reaper documentation, but here is a quick guide to the required steps for ReaControl24:
+
+* Start Reaper
+* Go to the *Preferences* dialog
+* Scroll the left-hand side panel to the bottom and locate *Control/OSC/web*
+* In the right-hand panel click *Add*
+* Set the *Control surface mode* drop-down box to *OSC (Open Sound Control)*
+* Click the *Pattern Config* drop-down box and choose *(open config directory)*
+* Finder or Windows Explorer will now open at the OSC config files directory for your system
+* Copy or move the *Control24.ReaperOSC* file provided with ReaControl24 into this directory
+* Return to the Reaper OSC dialog (which should still be open) and again Click the *Pattern Config* drop-down box. Choose *(refresh list)*
+* Click the *Pattern Config* drop-down box a final time, this time you should see and choose *Control24*
+* Complete the rest of the configuration in the dialog. The settings below are an example and may vary for your environment:
+    * *Device Name* = any suitable name e.g. "ReaControl24"
+    * *Mode* = Configure device IP + local port
+    * *Device Port* = 9124
+    * *Device IP* = The IP address of the PC running ReaControl client process e.g: 192.168.1.10
+    * *Local listen port* = 9125
+    * *Local IP* = The IP address of the Reaper PC on the same network or the same PC e.g: 192.168.1.10
+    * *Allow binding...learn* = Tick/Yes
+    * *If outgoing packets..... values* = The defaults are fine
+* Click OK to save the Reaper.OSC configuration. Your new entry should appear in the list
 
 ### Advanced options
 
 Use the --help command line switch for each process and the possibilities will be shown. Addresses and ports can be set for TCP/IP links, and the network interface can be set to state where the Control24 can be found.
+
+You can run each process on different hosts if you need to do so. Simply perform the install as needed on each host and run the Daemon and Client processes, configuring each with appropriate network settings.
 
 ### Prerequisites
 
