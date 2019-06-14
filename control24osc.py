@@ -1408,7 +1408,7 @@ class C24oscsession(object):
             self.c24_client.send_bytes(cmdbytes)
 
     # session housekeeping methods
-    def __init__(self, opts, networks):
+    def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
         global LOG
         LOG = start_logging('control24osc', opts.logdir, opts.debug)
@@ -1469,7 +1469,7 @@ class C24oscsession(object):
         """Placeholder to see if session object destruction is a useful hook"""
         LOG.debug("C24oscsession del")
         self.close()
-
+    
 
 # START main program
 def main():
