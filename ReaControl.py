@@ -283,24 +283,26 @@ class Sniffer(threading.Thread):
         except KeyboardInterrupt:
             self.nethandler.is_capturing = False
 
+
 class KeepAlive(threading.Thread):
     """Thread class to hold the keep alive loop"""
     def __init__(self, session):
         """set up the thread and copy session refs needed"""
         super(KeepAlive, self).__init__()
         self.daemon = True
-        self.name = 'thread_keepalive'
         self.session = session
+        self.name = '{}_thread_keepalive'.format(self.session.session_name)
 
     def run(self):
         """keep alive loop"""
         while not self.session.is_closing:
-            if self.session.is_capturing and not self.session.mac_control24 is None:
+            if self.session.parent.is_capturing and not self.session.device_mac is None:
                 delta = tick() - self.session.pcap_last_sent
                 if delta >= TIMING_KEEP_ALIVE:
-                    LOG.debug('TODESK KeepAlive')
+                    LOG.debug('%s KeepAlive TO DEVICE', self.session.session_name)
                     self.session.send_packet(self.session.prepare_keepalive())
             time.sleep(TIMING_KEEP_ALIVE_LOOP)
+
 
 class ManageListener(threading.Thread):
     """Thread class to manage the multiprocessing listener"""
@@ -312,28 +314,20 @@ class ManageListener(threading.Thread):
         """set up the thread and copy session refs needed"""
         super(ManageListener, self).__init__()
         self.daemon = True
-        self.name = 'thread_listener'
         self.session = session
+        self.name = '{}_thread_listener'.format(self.session.session_name)
         self.mp_listener = self.session.mp_listener
-        self.mp_conn = None
+        self.mp_conn = self.session.parent_conn
 
     def run(self):
         """listener management loop"""
-        # Start a Multprocessing Listener
-        self.mp_listener = Listener(
-            self.session.listen_address, authkey=DEFAULTS.get('auth'))
         recvbuffer = create_string_buffer(self.cmd_buffer_length)
         # Loop to manage connect/disconnect events
         while not self.session.is_closing:
-            last = None
             try:
-                LOG.info('MP Listener waiting for connection at %s',
-                         self.session.listen_address)
-                self.mp_conn = self.mp_listener.accept()
-                self.session.mp_is_connected = True
-                last = self.mp_listener.last_accepted
-                LOG.info('MP Listener Received connection from %s', last)
-                while self.session.mp_is_connected:
+                LOG.info('%s Pipe Listener waiting for first data at %s',
+                         self.name, self.session.listen_address)
+                while self.session.client_is_connected:
                     buffsz = 0
                     if self.mp_conn.poll(TIMING_LISTENER_POLL):
                         incrsz = self.mp_conn.recv_bytes_into(
@@ -351,39 +345,26 @@ class ManageListener(threading.Thread):
                             ncmds += 1
                         self.session.receive_handler(recvbuffer.raw, ncmds, buffsz)
 
-            except AuthenticationError:
-                LOG.warn('MP Listener Authentication Error connection from %s',
-                         last)
-                self.session.mp_is_connected = False
-                time.sleep(TIMING_LISTENER_RECONNECT)
-            except (EOFError, IOError):
-                LOG.info('MP Listener disconnected from %s', last)
-                self.session.mp_is_connected = False
-                time.sleep(TIMING_LISTENER_RECONNECT)
             except Exception:
-                LOG.error("MP Listener Uncaught exception", exc_info=True)
+                LOG.error("%s Pipe Listener Uncaught exception", self.name, exc_info=True)
                 raise
 
         # close down gracefully
-        if self.session.mp_is_connected:
-            LOG.info('MP Listener closing connection with %s', last)
-            self.mp_conn.close()
-            self.session.mp_is_connected = False
-        self.mp_listener.close()
+        self.session.client_conn.close()
+        self.session.parent_conn.close()
 
     def mpsend(self, pkt_data):
         """If a client is connected then send the data to it.
         trap if this sees that the client went away meanwhile"""
-        if not self.mp_conn is None:
-            try:
-                self.mp_conn.send_bytes(pkt_data)
-            except (IOError, EOFError):
-                # Client broke the pipe?
-                LOG.info('MP Listener broken pipe from %s',
-                         self.mp_listener.last_accepted)
-                self.mp_conn.close()
-                self.session.mp_is_connected = False
-                self.mp_conn = None
+        try:
+            self.session.client_conn.send_bytes(pkt_data)
+        except (IOError, EOFError):
+            # Client broke the pipe?
+            LOG.info('%s MP Listener broken pipe',
+                        self.name)
+            self.session.client_is_connected = False
+            self.session.client_conn.close()
+            self.session.parent_conn.close()
 
 #--MULTI New Listener class
 # currently a full copy/paste of C24Session
@@ -569,7 +550,7 @@ class DeviceSession(object):
             LOG.warn('Waiting for DESK ACK %d', totalwait)
             #TODO implement daw-desk retry packets
         LOG.debug('TODESK CMD %d', self.sendcounter)
-        if not self.mac_control24 is None:
+        if not self.mac_device is None:
             packet = self._prepare_packetr(pkt_data, pkt_data_len, ncmds)
             self.send_packet(packet)
             self.sendlock.clear()
@@ -636,14 +617,19 @@ class DeviceSession(object):
             self.close()
 
         if self.is_supported_device:
-            parent_conn, child_conn = self.client_pipe
-            self.client_process = Process(target = target, args = self.parent.thru_params + self.client_conn)
+            self.client_process = Process(target = target, args = self.client_args)
             self.client_process.start()
         
         while not self.client_process.is_alive():
             time.sleep(1)
         
         self.client_is_connected = True
+
+    def new_port(self):
+        daw_string = self.parent.opts.connect
+        daw_tuple = NetworkHelper.ipstr_to_tuple(daw_string)
+        daw_port = daw_tuple[1] + (self.session_number - 1)
+        self.daw_address = (daw_tuple[0], daw_port)
 
     def init_device(self):
         # initialise the desk by sending the init command
@@ -662,6 +648,8 @@ class DeviceSession(object):
         self.parent = parent
         self.session_number = number
         self.session_name = 'device session {%d}'.format(self.session_number)
+        self.daw_address = None
+        self.new_port()
         self.mac_device = MacAddress.from_buffer_copy(device_mac)
         self.bcast_data = bcast_data
         LOG.info('Device detected: %s %s at %s',
@@ -672,6 +660,9 @@ class DeviceSession(object):
         self.client_process = None
         self.parent_conn, self.client_conn = Pipe()
         self.client_is_connected = False
+        #--MULTI slightly hacky, but preparing the client instance arguments in the same format
+        # as they are used when launching as a command line process
+        self.client_args = ({'connect': self.daw_address}, self.parent.network, self.client_conn)
         self.is_closing = False
         self.is_supported_device = False
         self.last_sent = tick()
@@ -691,6 +682,9 @@ class DeviceSession(object):
         self.init_device()        
         # Start the client process
         self.start_client()
+        # Start a thread to listen to the process pipe
+        self.thread_listener = ManageListener(self)
+        self.thread_listener.start()
         # Start a thread to keep sending packets to desk to keep alive
         self.thread_keepalive = KeepAlive(self)
         self.thread_keepalive.start()
