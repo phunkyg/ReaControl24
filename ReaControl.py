@@ -117,6 +117,9 @@ class MacAddress(Structure):
         """does the address match broadcast bytes"""
         return compare_ctype_array(self.vendor, MacAddress._broadcast)
 
+    def __str__(self):
+        return hexl(self)
+
 
 class EthHeader(Structure):
     """ctypes structure for the Ethernet layer
@@ -296,7 +299,7 @@ class KeepAlive(threading.Thread):
     def run(self):
         """keep alive loop"""
         while not self.session.is_closing:
-            if self.session.parent.is_capturing and not self.session.device_mac is None:
+            if self.session.parent.is_capturing and not self.session.mac_device is None:
                 delta = tick() - self.session.pcap_last_sent
                 if delta >= TIMING_KEEP_ALIVE:
                     LOG.debug('%s KeepAlive TO DEVICE', self.session.session_name)
@@ -316,7 +319,8 @@ class ManageListener(threading.Thread):
         self.daemon = True
         self.session = session
         self.name = '{}_thread_listener'.format(self.session.session_name)
-        self.mp_listener = self.session.mp_listener
+        #--MULTI pretty sure this is redundant
+        #self.mp_listener = self.session.mp_listener
         self.mp_conn = self.session.parent_conn
 
     def run(self):
@@ -325,8 +329,8 @@ class ManageListener(threading.Thread):
         # Loop to manage connect/disconnect events
         while not self.session.is_closing:
             try:
-                LOG.info('%s Pipe Listener waiting for first data at %s',
-                         self.name, self.session.listen_address)
+                LOG.info('%s Pipe Listener waiting for first data from pid %d',
+                         self.name, self.session.client_process.pid)
                 while self.session.client_is_connected:
                     buffsz = 0
                     if self.mp_conn.poll(TIMING_LISTENER_POLL):
@@ -392,13 +396,13 @@ class NetworkHandler(object):
             LOG.debug('%s', str(bcast_data))  
         #--MULTI check sessions and create if new
         src_mac = packet.struc.ethheader.macsrc
-        src_session = self.sessions.get(src_mac)
+        src_session = self.sessions.get(str(src_mac))
         if src_session is None and src_mac.is_vendor():
             if broadcast:
                 #--MULTI not sure if params are right yet
                 self.num_sessions += 1
                 src_session = DeviceSession(self, self.num_sessions, src_mac, bcast_data)
-                self.sessions[src_mac] = src_session
+                self.sessions[str(src_mac)] = src_session
             else:
                 LOG.warn('Dropping Non broadcast packet from new device! %s', str(src_mac))
                 return
@@ -485,7 +489,8 @@ class NetworkHandler(object):
         # For threads under direct control this signals to please end
         self.is_closing = True
         #--MULTI call a close for each session
-        for sess in self.sessions:
+        for mac, sess in self.sessions.iteritems():
+            LOG.info("Closing DeviceSession for %s", mac)
             sess.close()
         # PCAP thread has its own KeyboardInterrupt handle
         LOG.info("NetworkHandler closed")
@@ -505,7 +510,7 @@ class DeviceSession(object):
     def packet_handler(self, packet):
         """Device Session Packet Handler. If packet was for
         this device then it will have been dispatched to here"""
-        if packet.pkt_len > 30 and not packet.is_broadcast:
+        if not packet.is_broadcast:
             # Look first to see if this is an ACK
             if packet.struc.c24header.c24cmd == COMMANDS['ack']:
                 LOG.debug('%s ACK FROM DEVICE', self.session_name)
@@ -626,7 +631,7 @@ class DeviceSession(object):
         self.client_is_connected = True
 
     def new_port(self):
-        daw_string = self.parent.opts.connect
+        daw_string = self.parent.thru_params[0].connect
         daw_tuple = NetworkHelper.ipstr_to_tuple(daw_string)
         daw_port = daw_tuple[1] + (self.session_number - 1)
         self.daw_address = (daw_tuple[0], daw_port)
@@ -647,7 +652,7 @@ class DeviceSession(object):
         #--MULTI new session things
         self.parent = parent
         self.session_number = number
-        self.session_name = 'device session {%d}'.format(self.session_number)
+        self.session_name = 'device session {}'.format(self.session_number)
         self.daw_address = None
         self.new_port()
         self.mac_device = MacAddress.from_buffer_copy(device_mac)
