@@ -51,7 +51,8 @@ TIMING_FADER_ECHO = 0.1
 
 SESSION = None
 # Globals
-LOG = None
+if not 'LOG' in globals():
+    LOG = None
 
 # Control24 functions
 # Split command list on repeats of the same starting byte or any instance of the F7 byte
@@ -1410,8 +1411,6 @@ class C24oscsession(object):
     # session housekeeping methods
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
-        global LOG
-        LOG = start_logging('control24osc', opts.logdir, opts.debug)
         self.desk = C24desk(self.osc_client_send, self.c24_client_send)
 
         self.server = OSC.parseUrlStr(opts.server)[0]
@@ -1518,6 +1517,7 @@ def main():
 
     # Build the session
     if SESSION is None:
+        LOG = start_logging('control24osc', opts.logdir, opts.debug)
         SESSION = C24oscsession(opts, networks)
 
     # an OSC testing message

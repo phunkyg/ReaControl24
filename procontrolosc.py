@@ -53,7 +53,8 @@ TIMING_FADER_ECHO = 0.1
 
 SESSION = None
 # Globals
-LOG = None
+if not 'LOG' in globals():
+    LOG = None
 
 # Control24 functions
 # Split command list on repeats of the same starting byte or any instance of the F7 byte
@@ -73,7 +74,7 @@ def signal_handler(sig, stackframe):
     """Exit the daemon if a signal is received"""
     signals_dict = dict((getattr(signal, n), n)
                         for n in dir(signal) if n.startswith('SIG') and '_' not in n)
-    LOG.info("control24osc shutting down as %s received.", signals_dict[sig])
+    LOG.info("procontrolosc shutting down as %s received.", signals_dict[sig])
     if not SESSION is None:
         SESSION.close()
     sys.exit(0)
@@ -1410,10 +1411,8 @@ class C24oscsession(object):
             self.c24_client.send_bytes(cmdbytes)
 
     # session housekeeping methods
-    def __init__(self, opts, networks):
+    def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
-        global LOG
-        LOG = start_logging('control24osc', opts.logdir, opts.debug)
         self.desk = C24desk(self.osc_client_send, self.c24_client_send)
 
         self.server = OSC.parseUrlStr(opts.server)[0]
@@ -1485,14 +1484,14 @@ def main():
     default_ip = networks.get_default()[1]
 
     # program options
-    oprs = opts_common("control24osc Control24 OSC client")
+    oprs = opts_common("procontrolosc ProControl OSC client")
     default_daemon = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('daemon'))
     oprs.add_option(
         "-s",
         "--server",
         dest="server",
         help="connect to control24d at given host:port. default %s" % default_daemon)
-    default_osc_client24 = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('control24osc'))
+    default_osc_client24 = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('procontrolosc'))
     oprs.add_option(
         "-l",
         "--listen",
@@ -1520,11 +1519,12 @@ def main():
 
     # Build the session
     if SESSION is None:
+        LOG = start_logging('procontrolosc', opts.logdir, opts.debug)
         SESSION = C24oscsession(opts, networks)
 
     # an OSC testing message
     testmsg = OSC.OSCMessage('/print')
-    testmsg.append('Hello DAW. I am the Control24 OSC Client')
+    testmsg.append('Hello DAW. I am the ProControl OSC Client')
 
     # Main Loop once session initiated
     while True:
