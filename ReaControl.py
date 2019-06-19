@@ -610,7 +610,7 @@ class DeviceSession(object):
     #--MULTI new process launcher
     def start_client(self):
         device = self.bcast_data.device
-        if device == 'CNTRL24':
+        if device == 'CNTRL|24':
             target = control24_client.C24oscsession
             self.is_supported_device = True
         elif device == 'MAINUNIT':
