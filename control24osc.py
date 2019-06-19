@@ -1517,6 +1517,7 @@ def main():
 
     # Build the session
     if SESSION is None:
+        # start logging if main
         LOG = start_logging('control24osc', opts.logdir, opts.debug)
         SESSION = C24oscsession(opts, networks)
 

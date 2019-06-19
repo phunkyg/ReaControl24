@@ -1519,6 +1519,7 @@ def main():
 
     # Build the session
     if SESSION is None:
+        # start logging if main
         LOG = start_logging('procontrolosc', opts.logdir, opts.debug)
         SESSION = C24oscsession(opts, networks)
 
