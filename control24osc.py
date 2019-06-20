@@ -61,7 +61,7 @@ def findintree(obj, key):
     #TODO see if this will save having to
     # code button addresses twice
     if key in obj: return obj[key]
-    for k, v in obj.items():
+    for _, v in obj.items():
         if isinstance(v,dict):
             item = findintree(v, key)
             if item is not None:
@@ -1284,23 +1284,25 @@ class C24oscsession(object):
     # Threaded methods
     def _manage_c24_client(self):
         while not self.is_closing:
-            # Poll for a connection, in case server is not up
-            LOG.debug('Starting MP client connecting to %s', self.server)
-            while self.c24_client is None:
-                try:
-                    self.c24_client = Client(
-                        self.server, authkey=DEFAULTS.get('auth'))
-                except Exception as exc:
-                    # Connection refused
-                    if exc[0] == 61:
-                        LOG.error(
-                            'Error trying to connect to control24d at %s. May not be running. Will try again.', self.server)
-                        time.sleep(TIMING_SERVER_POLL)
-                    else:
-                        LOG.error(
-                            'c24 client Unhandled exception', exc_info=True)
-                        raise
-
+            if self.standalone:
+                # Poll for a connection, in case server is not up
+                LOG.debug('Starting MP client connecting to %s', self.server)
+                while self.c24_client is None:
+                    try:
+                        self.c24_client = Client(
+                            self.server, authkey=DEFAULTS.get('auth'))
+                    except Exception as exc:
+                        # Connection refused
+                        if exc[0] == 61:
+                            LOG.error(
+                                'Error trying to connect to control24d at %s. May not be running. Will try again.', self.server)
+                            time.sleep(TIMING_SERVER_POLL)
+                        else:
+                            LOG.error(
+                                'c24 client Unhandled exception', exc_info=True)
+                            raise
+            else:
+                self.c24_client = self.server_pipe
             self.c24_client_is_connected = True
 
             # Main Loop when connected
@@ -1412,8 +1414,13 @@ class C24oscsession(object):
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
         self.desk = C24desk(self.osc_client_send, self.c24_client_send)
-
-        self.server = OSC.parseUrlStr(opts.server)[0]
+        self.standalone = pipe is None
+        if self.standalone:
+            self.server = OSC.parseUrlStr(opts.server)[0]
+            self.server_pipe = None
+        else:
+            self.server = None
+            self.server_pipe = pipe
         self.listen = OSC.parseUrlStr(opts.listen)[0]
         self.connect = OSC.parseUrlStr(opts.connect)[0]
         self.osc_listener = None
@@ -1473,7 +1480,7 @@ class C24oscsession(object):
 # START main program
 def main():
     """Main function declares options and initialisation routine for OSC client."""
-    global SESSION
+    global SESSION, LOG
 
     # Find networks on this machine, to determine good defaults
     # and help verify options
@@ -1507,7 +1514,7 @@ def main():
 
     # Parse and verify options
     # TODO move to argparse and use that to verify
-    (opts, args) = oprs.parse_args()
+    (opts, _) = oprs.parse_args()
     if not networks.verify_ip(opts.listen.split(':')[0]):
         raise OptionError('No network has the IP address specified.', 'listen')
 
