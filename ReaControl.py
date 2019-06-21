@@ -623,10 +623,15 @@ class DeviceSession(object):
 
         if self.is_supported_device:
             self.client_process = Process(target = target, args = self.client_args)
-            self.client_process.start()
+            try:
+                self.client_process.start()
+            except RuntimeError:
+                pass
+                #LOG.warning("Client process already started. Normal when debugging.")
+                
         
-        while not self.client_process.is_alive():
-            time.sleep(1)
+        #while not self.client_process.is_alive():
+        #    time.sleep(1)
         
         self.client_is_connected = True
 
@@ -681,8 +686,9 @@ class DeviceSession(object):
         self.backoff = threading.Timer(TIMING_BACKOFF, self._backoff)
         # build a re-usable Ethernet Header for sending packets
         self.ethheader = EthHeader()
-        self.ethheader.macsrc = parent.mac_computer
-        self.ethheader.macdst = self.mac_device
+        self.ethheader.macsrc = MacAddress.from_buffer_copy(self.parent.mac_computer)
+        self.ethheader.macdest = self.mac_device
+        LOG.debug(str(self.ethheader))
         # Turn the device online
         self.init_device()        
         # Start the client process
@@ -701,7 +707,7 @@ class DeviceSession(object):
 
     def close(self):
         """Quit the device session gracefully if possible"""
-        LOG.info("% closing", self.session_name)
+        LOG.info("%s closing", self.session_name)
         # For threads under direct control this signals to please end
         self.is_closing = True
         # A bit of encouragement
