@@ -10,6 +10,7 @@ import signal
 import sys
 import threading
 import time
+import logging
 from ctypes import c_ubyte
 from multiprocessing.connection import Client
 from optparse import OptionError
@@ -17,7 +18,7 @@ from optparse import OptionError
 import OSC
 
 from control24common import (CHANNELS, DEFAULTS, FADER_RANGE, NetworkHelper,
-                             opts_common, start_logging, tick, SIGNALS)
+                             opts_common, tick, SIGNALS)
 from control24map import MAPPING_TREE
 
 '''
@@ -51,8 +52,6 @@ TIMING_FADER_ECHO = 0.1
 
 SESSION = None
 # Globals
-if not 'LOG' in globals():
-    LOG = None
 
 # Control24 functions
 # Split command list on repeats of the same starting byte or any instance of the F7 byte
@@ -70,9 +69,10 @@ def findintree(obj, key):
 # Housekeeping functions
 def signal_handler(sig, stackframe):
     """Exit the daemon if a signal is received"""
+    log = logging.getLogger(__name__)
     signals_dict = dict((getattr(signal, n), n)
                         for n in dir(signal) if n.startswith('SIG') and '_' not in n)
-    LOG.info("control24osc shutting down as %s received.", signals_dict[sig])
+    log.info("control24osc shutting down as %s received.", signals_dict[sig])
     if not SESSION is None:
         SESSION.close()
     sys.exit(0)
@@ -293,7 +293,8 @@ class C24desk(C24base):
         self.c24modifiers = C24modifiers(self)
 
     def set_mode(self, mode):
-        LOG.debug('Desk mode set: %s', mode)
+        log = logging.getLogger(__name__)
+        log.debug('Desk mode set: %s', mode)
         self.mode = mode
         for track in self.c24tracks:
             if hasattr(track, 'c24scribstrip'):
@@ -302,12 +303,13 @@ class C24desk(C24base):
     def get_track(self, track):
         """Safely access both the main tracks and any virtual
         ones in the address space between 24 and 31"""
+        log = logging.getLogger(__name__)
         if track is None:
             return None
         try:
             return self.c24tracks[track]
         except IndexError:
-            LOG.warn("No track exists with index %d", track)
+            log.warn("No track exists with index %d", track)
             return None
 
     def long_scribble(self, longtext96chars):
@@ -605,9 +607,10 @@ class C24scribstrip(C24base):
         )
 
     def set_current_display(self):
+        log = logging.getLogger(__name__)
         self.transform_text()
         self.cmdbytes[6:10] = [ord(thischar) for thischar in self.dtext4ch]
-        LOG.debug('c24scribstrip mode state: %s = %s',
+        log.debug('c24scribstrip mode state: %s = %s',
                   self.mode, self.dtext4ch)
         self.track.desk.c24_client_send(self.cmdbytes)
 
@@ -696,15 +699,17 @@ class C24jpot(C24base):
             self._update_from_move(parsedcmd)
 
     def _update_from_button(self, parsedcmd, addrs):
+        log = logging.getLogger(__name__)
         if parsedcmd.get('Value') == 1:
             button = addrs[-1]
             if self.modes.has_key(button):
                 self.mode = button
             else:
-                LOG.warn('C24jpot no mode for button %s', button)
+                log.warn('C24jpot no mode for button %s', button)
 
     def _update_from_move(self, parsedcmd):
         """Update from desk command byte list"""
+        log = logging.getLogger(__name__)
         cbytes = parsedcmd.get('cmdbytes')
         if cbytes:
             for ind, byt in enumerate(cbytes):
@@ -731,7 +736,7 @@ class C24jpot(C24base):
             else:
                 msg.append(self.out)
 
-            LOG.debug('%s', self)
+            log.debug('%s', self)
             self.track.desk.osc_client_send(msg)
 
 
@@ -822,6 +827,7 @@ class C24vpot(C24base):
 
     def update_led(self):
         """Update the LED display aroudn the vpot"""
+        log = logging.getLogger(__name__)
         if self.pan > 0 and self.pan < 1:
             self.panv = self.pan - 0.5
             self.pang = int(self.panv * 16) + 7
@@ -836,9 +842,9 @@ class C24vpot(C24base):
             self.cmdbytes[4], self.cmdbytes[5], self.cmdbytes[6] = led
             self.cmdbytes[4] = self.cmdbytes[4] | (self.track.track_number & 0x3f)
         except IndexError:
-            LOG.debug('VPOT LED lookup failure: %s', self)
+            log.debug('VPOT LED lookup failure: %s', self)
         self.track.desk.c24_client_send(self.cmdbytes)
-        LOG.debug('VPOT LED: %s', self)
+        log.debug('VPOT LED: %s', self)
 
     @staticmethod
     def led_value(pang):
@@ -847,6 +853,7 @@ class C24vpot(C24base):
     @staticmethod
     def adj_pan(vpot):
         """Increment/decrement the pan factor from command bytes"""
+        log = logging.getLogger(__name__)
         potdir = vpot.cmdbytes_d_c[2] - 64
         potvel = vpot.cmdbytes_d_c[3]
         if vpot.track.desk.c24modifiers.command:
@@ -859,7 +866,7 @@ class C24vpot(C24base):
             vpot.pan = 1
         if vpot.pan < 0:
             vpot.pan = 0
-        LOG.debug('vpot dir:%d vel:%d adj:%1.6f  pan:%1.6f',
+        log.debug('vpot dir:%d vel:%d adj:%1.6f  pan:%1.6f',
                   potdir, potvel, adj, vpot.pan)
         return adj
 
@@ -891,13 +898,14 @@ class C24fader(C24base):
 
     def d_c(self, parsedcmd):
         """Desk to Computer. Update from desk command byte list"""
+        log = logging.getLogger(__name__)
         addr = parsedcmd.get('addresses')
         if addr[1] == 'track':
             self._update_from_fadermove(parsedcmd)
         elif addr[1] == 'button':
             self._update_from_touch(parsedcmd)
         else:
-            LOG.warn('Unknown command sent to fader class: %s', parsedcmd)
+            log.warn('Unknown command sent to fader class: %s', parsedcmd)
 
     def c_d(self, addrlist, stuff):
         """Computer to Desk. Update from DAW gain factor (0-1)"""
@@ -908,19 +916,20 @@ class C24fader(C24base):
         self.track.desk.c24_client_send(self.cmdbytes)
 
     def _update_from_fadermove(self, parsedcmd):
+        log = logging.getLogger(__name__)
         cbytes = parsedcmd.get('cmdbytes')
         t_in = ord(cbytes[1])
         if t_in != self.track.track_number:
-            LOG.error('Track from Command Bytes does not match Track object Index: %s %s',
+            log.error('Track from Command Bytes does not match Track object Index: %s %s',
                       binascii.hexlify(cbytes), self)
             return None
         #TODO tidy up here
         if len(cbytes) <2:
-            LOG.warn('c24fader bad signature %s',
+            log.warn('c24fader bad signature %s',
                     parsedcmd)
             return None
         if cbytes[3] == '\x00':
-            LOG.warn('c24fader bad signature %s',
+            log.warn('c24fader bad signature %s',
                      parsedcmd)
             return None
         self.cmdbytes[2] = ord(cbytes[2])
@@ -978,9 +987,10 @@ class C24buttonled(C24base):
         self.set_btn(addr, val)
 
     def set_btn(self, addr, val):
+        log = logging.getLogger(__name__)
         try:
             lkpbtn = C24buttonled.mapping_osc[addr]
-            LOG.debug("Button LED: %s", lkpbtn)
+            log.debug("Button LED: %s", lkpbtn)
             if not self.track is None:
                 tbyt = lkpbtn.get('TrackByte')
             else:
@@ -994,10 +1004,10 @@ class C24buttonled(C24base):
                 if ind == 2 and val == 1:
                     c_byt.value = c_byt.value | 0x40
                 self.cmdbytes[ind] = c_byt
-            LOG.debug("Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
+            log.debug("Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
             self.desk.c24_client_send(self.cmdbytes)
         except KeyError:
-            LOG.warn("OSCServer LED not found: %s %s", addr, str(val))
+            log.warn("OSCServer LED not found: %s %s", addr, str(val))
 
 class C24automode(C24base):
     """ class to deal with the automation toggle on a track
@@ -1080,8 +1090,9 @@ class C24automode(C24base):
 
     def update_led(self):
         """Update the LED display by the auto toggle"""
+        log = logging.getLogger(__name__)
         self.track.desk.c24_client_send(self.cmdbytes)
-        LOG.debug('AUTO LED: %s', self)
+        log.debug('AUTO LED: %s', self)
 
 # Class for the client session
 class C24oscsession(object):
@@ -1120,6 +1131,7 @@ class C24oscsession(object):
     @staticmethod
     def parsecmd(cmdbytes):
         """take a byte list split from the packet data and find it in the mapping dict tree"""
+        log = logging.getLogger(__name__)
         # possibly evil but want to catch these for a more fluid
         # debugging session if they occur a lot
         if not isinstance(cmdbytes, list):
@@ -1137,7 +1149,7 @@ class C24oscsession(object):
             level = level + 1
             lkp = lkp.get(this_byte)
             if not lkp:
-                LOG.warn(
+                log.warn(
                     'Level %d byte not found in MAPPING_TREE: %02x. New mapping needed for sequence %s',
                     level,
                     this_byte,
@@ -1156,7 +1168,7 @@ class C24oscsession(object):
                 try:
                     this_byte = ord(cmdbytes[this_byte_num])
                 except IndexError:
-                    LOG.warn('Parsecmd: byte not found. Possible malformed command: %s')
+                    log.warn('Parsecmd: byte not found. Possible malformed command: %s')
                     return None
                 if 'ChildByteMask' in lkp:
                     this_byte = this_byte & lkp['ChildByteMask']
@@ -1205,14 +1217,15 @@ class C24oscsession(object):
 
     # Event methods
     def _desk_to_daw(self, c_databytes):
-        LOG.debug(binascii.hexlify(c_databytes))
+        log = logging.getLogger(__name__)
+        log.debug(binascii.hexlify(c_databytes))
         commands = C24oscsession.cmdsplit(c_databytes)
-        LOG.debug('nc: %d', len(commands))
+        log.debug('nc: %d', len(commands))
         for cmd in commands:
             parsed_cmd = C24oscsession.parsecmd(cmd)
             if parsed_cmd:
                 address = parsed_cmd.get('address')
-                LOG.debug(parsed_cmd)
+                log.debug(parsed_cmd)
                 # If we have a track number then get the corresponding object
                 track_number = parsed_cmd.get("TrackNumber")
                 track = self.desk.get_track(track_number)
@@ -1246,9 +1259,10 @@ class C24oscsession(object):
 
     def _daw_to_desk(self, addr, tags, stuff, source):
         """message handler for the OSC listener"""
+        log = logging.getLogger(__name__)
         if self.osc_listener_last is None:
             self.osc_listener_last = source
-        LOG.debug("OSC Listener received Message: %s %s [%s] %s",
+        log.debug("OSC Listener received Message: %s %s [%s] %s",
                   source, addr, tags, str(stuff))
         # TODO primitive switching needs a proper lookup map
         addrlist = addr.split('/')
@@ -1277,16 +1291,17 @@ class C24oscsession(object):
                 cmdinst = self.desk.c24buttonled
         else:
             msg_string = "%s [%s] %s" % (addr, tags, str(stuff))
-            LOG.warn("C24client unhandled osc address: %s", msg_string)
+            log.warn("C24client unhandled osc address: %s", msg_string)
             return
         cmdinst.c_d(addrlist, stuff)
 
     # Threaded methods
     def _manage_c24_client(self):
+        log = logging.getLogger(__name__)
         while not self.is_closing:
             if self.standalone:
                 # Poll for a connection, in case server is not up
-                LOG.debug('Starting MP client connecting to %s', self.server)
+                log.debug('Starting MP client connecting to %s', self.server)
                 while self.c24_client is None:
                     try:
                         self.c24_client = Client(
@@ -1294,11 +1309,11 @@ class C24oscsession(object):
                     except Exception as exc:
                         # Connection refused
                         if exc[0] == 61:
-                            LOG.error(
+                            log.error(
                                 'Error trying to connect to control24d at %s. May not be running. Will try again.', self.server)
                             time.sleep(TIMING_SERVER_POLL)
                         else:
-                            LOG.error(
+                            log.error(
                                 'c24 client Unhandled exception', exc_info=True)
                             raise
             else:
@@ -1307,18 +1322,18 @@ class C24oscsession(object):
 
             # Main Loop when connected
             while self.c24_client_is_connected:
-                LOG.debug('MP Client waiting for data: %s',
+                log.debug('MP Client waiting for data: %s',
                           self.c24_client.fileno())
                 try:
                     datarecv = self.c24_client.recv_bytes()
                     self._desk_to_daw(datarecv)
                 except EOFError:
-                    LOG.error('MP Client EOFError: Daemon closed communication.')
+                    log.error('MP Client EOFError: Daemon closed communication.')
                     self.c24_client_is_connected = False
                     self.c24_client = None
                     time.sleep(TIMING_SERVER_POLL)
                 except Exception:
-                    LOG.error("C24 client Uncaught exception", exc_info=True)
+                    log.error("C24 client Uncaught exception", exc_info=True)
                     raise
         # Close down gracefully
         if self.c24_client_is_connected:
@@ -1326,6 +1341,7 @@ class C24oscsession(object):
             self.c24_client_is_connected = False
 
     def _manage_osc_listener(self):
+        log = logging.getLogger(__name__)
         self.osc_listener = OSC.OSCServer(
             self.listen)
         # Register OSC Listener handler methods
@@ -1333,47 +1349,48 @@ class C24oscsession(object):
         self.osc_listener.addMsgHandler("default", self._daw_to_desk)
 
         while not self.is_closing:
-            LOG.debug('Starting OSC Listener at %s', self.listen)
+            log.debug('Starting OSC Listener at %s', self.listen)
             try:
                 self.osc_listener.serve_forever()
             except Exception as exc:
                 if exc[0] == 9:
-                    LOG.debug("OSC shutdown error", exc_info=True)
+                    log.debug("OSC shutdown error", exc_info=True)
                 else:
-                    LOG.error("OSC Listener error", exc_info=True)
+                    log.error("OSC Listener error", exc_info=True)
                 #raise
-            LOG.debug('OSC Listener stopped')
+            log.debug('OSC Listener stopped')
             time.sleep(TIMING_OSC_LISTENER_RESTART)
 
     def _manage_osc_client(self):
+        log = logging.getLogger(__name__)
         testmsg = OSC.OSCMessage('/print')
         testmsg.append('hello DAW')
 
         while not self.is_closing:
             self.osc_client = OSC.OSCClient()
             while self.osc_listener is None or self.osc_listener_last is None or not self.osc_listener.running:
-                LOG.debug(
+                log.debug(
                     'Waiting for the OSC listener to get a client %s', self.osc_listener_last)
                 time.sleep(TIMING_WAIT_OSC_LISTENER)
             try:
-                LOG.debug('Starting OSC Client connecting to %s',
+                log.debug('Starting OSC Client connecting to %s',
                           self.connect)
                 self.osc_client.connect(self.connect)
                 self.osc_client_is_connected = True
             except Exception:
-                LOG.error("OSC Client connection error",
+                log.error("OSC Client connection error",
                           exc_info=True)
                 self.osc_client_is_connected = False
                 time.sleep(TIMING_OSC_CLIENT_RESTART)
             while self.osc_client_is_connected and not self.is_closing:
-                LOG.debug("Sending Test message via OSC Client")
+                log.debug("Sending Test message via OSC Client")
                 try:
                     self.osc_client.send(testmsg)
                 except OSC.OSCClientError:
-                    LOG.error("Sending Test message got an error. DAW is no longer reponding.")
+                    log.error("Sending Test message got an error. DAW is no longer reponding.")
                     self._disconnect_osc_client()
                 except Exception:
-                    LOG.error("OSC Client Unhandled exception", exc_info=True)
+                    log.error("OSC Client Unhandled exception", exc_info=True)
                     raise
                 time.sleep(TIMING_OSC_CLIENT_LOOP)
             time.sleep(TIMING_OSC_CLIENT_RESTART)
@@ -1388,25 +1405,27 @@ class C24oscsession(object):
     def osc_client_send(self, osc_msg, simplevalue=None):
         """dry up the calls to osc client send
         that are wrapped in a connection check"""
+        log = logging.getLogger(__name__)
         if not simplevalue is None:
             osc_msg.append(simplevalue)
-        LOG.debug('OSCClient sending: %s', osc_msg)
+        log.debug('OSCClient sending: %s', osc_msg)
         if self.osc_client_is_connected:
             try:
                 self.osc_client.send(osc_msg)
             except:
-                LOG.error("Error sending OSC msg:",
+                log.error("Error sending OSC msg:",
                           exc_info=sys.exc_info())
                 self._disconnect_osc_client()
         else:
-            LOG.debug(
+            log.debug(
                 "OSC Client not connected but message send request received: %s", osc_msg)
 
     def c24_client_send(self, cmdbytes):
         """dry up the calls to the MP send that
         are wrapped in a connection check"""
+        log = logging.getLogger(__name__)
         if self.c24_client_is_connected:
-            LOG.debug("MP send: %s",
+            log.debug("MP send: %s",
                       binascii.hexlify(cmdbytes))
             self.c24_client.send_bytes(cmdbytes)
 
@@ -1463,24 +1482,26 @@ class C24oscsession(object):
 
     def close(self):
         """Placeholder if we need a shutdown method"""
-        LOG.info("C24oscsession closing")
+        log = logging.getLogger(__name__)
+        log.info("C24oscsession closing")
         # For threads under direct control this signals to please end
         self.is_closing = True
         # For others ask nicely
         if not self.osc_listener is None and self.osc_listener.running:
             self.osc_listener.close()
-        LOG.info("C24oscsession closed")
+        log.info("C24oscsession closed")
 
     def __del__(self):
         """Placeholder to see if session object destruction is a useful hook"""
-        LOG.debug("C24oscsession del")
+        log = logging.getLogger(__name__)
+        log.debug("C24oscsession del")
         self.close()
     
 
 # START main program
 def main():
     """Main function declares options and initialisation routine for OSC client."""
-    global SESSION, LOG
+    global SESSION
 
     # Find networks on this machine, to determine good defaults
     # and help verify options
@@ -1525,16 +1546,17 @@ def main():
     # Build the session
     if SESSION is None:
         # start logging if main
-        LOG = start_logging('control24osc', opts.logdir, opts.debug)
+        start_logging(__name__, opts.logdir, opts.debug)
         SESSION = C24oscsession(opts, networks)
 
     # an OSC testing message
     testmsg = OSC.OSCMessage('/print')
-    testmsg.append('Hello DAW. I am the Control24 OSC Client')
+    testmsg.append('Hello DAW. I am the ReaControl OSC Client')
 
     # Main Loop once session initiated
     while True:
         time.sleep(TIMING_MAIN_LOOP)
 
 if __name__ == '__main__':
+    from control24common import start_logging
     main()

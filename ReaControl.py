@@ -8,6 +8,7 @@ import signal
 import sys
 import threading
 import time
+import logging
 from ctypes import (POINTER, BigEndianStructure, Structure, Union,
                     addressof, c_char, c_ubyte, c_uint16,
                     c_uint32, cast, create_string_buffer, string_at)
@@ -19,7 +20,8 @@ from optparse import OptionError
 import pcap
 
 from control24common import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
-                             opts_common, start_logging, tick, SIGNALS)
+                             opts_common, tick, fix_ownership, SIGNALS,
+                             start_logging)
 
 #--MULTI can we import the client scripts?
 import control24osc as control24_client
@@ -60,10 +62,8 @@ TIMING_BACKOFF = 0.3            # Time to pause sending data to desk after a ret
 
 # Control Constants
 
-
-
 # START Globals
-LOG = None
+
 # --MULTI - use a dict to contain multiple sessions. Add a NETHANDLER global
 #SESSION = None
 NETHANDLER = None
@@ -82,10 +82,11 @@ PCAP_FILTER = '(ether dst %s or broadcast) and ether[12:2]=0x885f'
 def signal_handler(sig, stackframe):
     """Exit the daemon if a signal is received"""
     #Consider deprecating as it does not seem to work
-    global LOG, NETHANDLER
+    global NETHANDLER
+    log = logging.getLogger(__name__)
     signals_dict = dict((getattr(signal, n), n) for n in dir(signal)
                         if n.startswith('SIG') and '_' not in n)
-    LOG.info("daemon shutting down as %s received.", signals_dict[sig])
+    log.info("daemon shutting down as %s received.", signals_dict[sig])
     if not NETHANDLER is None:
         NETHANDLER.close()
     sys.exit(0)
@@ -298,11 +299,12 @@ class KeepAlive(threading.Thread):
 
     def run(self):
         """keep alive loop"""
+        log = logging.getLogger(__name__)
         while not self.session.is_closing:
             if self.session.parent.is_capturing and not self.session.mac_device is None:
                 delta = tick() - self.session.pcap_last_sent
                 if delta >= TIMING_KEEP_ALIVE:
-                    LOG.debug('%s KeepAlive TO DEVICE', self.session.session_name)
+                    log.debug('%s KeepAlive TO DEVICE', self.session.session_name)
                     self.session.send_packet(self.session.prepare_keepalive())
             time.sleep(TIMING_KEEP_ALIVE_LOOP)
 
@@ -325,11 +327,12 @@ class ManageListener(threading.Thread):
 
     def run(self):
         """listener management loop"""
+        log = logging.getLogger(__name__)
         recvbuffer = create_string_buffer(self.cmd_buffer_length)
         # Loop to manage connect/disconnect events
         while not self.session.is_closing:
             try:
-                LOG.info('%s Pipe Listener waiting for first data from pid %d',
+                log.info('%s Pipe Listener waiting for first data from pid %d',
                          self.name, self.session.client_process.pid)
                 while self.session.client_is_connected:
                     buffsz = 0
@@ -350,7 +353,7 @@ class ManageListener(threading.Thread):
                         self.session.receive_handler(recvbuffer.raw, ncmds, buffsz)
 
             except Exception:
-                LOG.error("%s Pipe Listener Uncaught exception", self.name, exc_info=True)
+                log.error("%s Pipe Listener Uncaught exception", self.name, exc_info=True)
                 raise
 
         # close down gracefully
@@ -360,11 +363,12 @@ class ManageListener(threading.Thread):
     def mpsend(self, pkt_data):
         """If a client is connected then send the data to it.
         trap if this sees that the client went away meanwhile"""
+        log = logging.getLogger(__name__)
         try:
             self.session.client_conn.send_bytes(pkt_data)
         except (IOError, EOFError):
             # Client broke the pipe?
-            LOG.info('%s MP Listener broken pipe',
+            log.info('%s MP Listener broken pipe',
                         self.name)
             self.session.client_is_connected = False
             self.session.client_conn.close()
@@ -380,6 +384,7 @@ class NetworkHandler(object):
     # callbacks / event handlers (threaded)
     def packet_handler(self, timestamp, pkt_data):
         """PCAP Packet Handler: Async method called on packet capture"""
+        log = logging.getLogger(__name__)
         broadcast = False
         pkt_len = len(pkt_data)
         # build a dynamic class and load the data into it
@@ -387,13 +392,13 @@ class NetworkHandler(object):
         packet = pcl()
         packet = pcl.from_buffer_copy(pkt_data)
         #Detailed traffic logging
-        LOG.debug('Packet Received: %s', str(packet))
+        log.debug('Packet Received: %s', str(packet))
         # Decode any broadcast packets
         if packet.is_broadcast():
             broadcast = True
             pbp = POINTER(C24BcastData)
             bcast_data = cast(packet.struc.packetdata, pbp).contents
-            LOG.debug('%s', str(bcast_data))  
+            log.debug('%s', str(bcast_data))  
         #--MULTI check sessions and create if new
         src_mac = packet.struc.ethheader.macsrc
         src_session = self.sessions.get(str(src_mac))
@@ -404,7 +409,7 @@ class NetworkHandler(object):
                 src_session = DeviceSession(self, self.num_sessions, src_mac, bcast_data)
                 self.sessions[str(src_mac)] = src_session
             else:
-                LOG.warn('Dropping Non broadcast packet from new device! %s', str(src_mac))
+                log.warn('Dropping Non broadcast packet from new device! %s', str(src_mac))
                 return
         #--MULTI despatch packet to sessions' handler
         src_session.packet_handler(packet)
@@ -413,11 +418,12 @@ class NetworkHandler(object):
     def send_packet(self, pkt):
         """sesion wrapper around pcap_sendpacket
         so we can pass in session and trap error"""
-        LOG.debug("Sending Packet of %d bytes: %s", pkt.pkt_tot_len, hexl(pkt.raw))
+        log = logging.getLogger(__name__)
+        log.debug("Sending Packet of %d bytes: %s", pkt.pkt_tot_len, hexl(pkt.raw))
         buf = pkt.to_buffer()
         pcap_status = self.pcap_sess.sendpacket(buf)
         if pcap_status != pkt.pkt_tot_len:
-            LOG.warn("Error sending packet: %s", self.pcap_sess.geterr())
+            log.warn("Error sending packet: %s", self.pcap_sess.geterr())
             return False
         else:
             return True
@@ -428,8 +434,8 @@ class NetworkHandler(object):
 
     def __init__(self, opts, networks):
         """Constructor to build the network handler object"""
-        global LOG
-        LOG = start_logging('control24d', opts.logdir, opts.debug)
+        log = start_logging(__name__, opts.logdir, opts.debug)
+        log.info('Network Handler Started')
         #--MULTI add a Sessions dict
         self.sessions = {}
         self.num_sessions = 0
@@ -485,19 +491,21 @@ class NetworkHandler(object):
 
     def close(self):
         """Quit the handler gracefully if possible"""
-        LOG.info("NetworkHandler closing")
+        log = logging.getLogger(__name__)
+        log.info("NetworkHandler closing")
         # For threads under direct control this signals to please end
         self.is_closing = True
         #--MULTI call a close for each session
         for mac, sess in self.sessions.iteritems():
-            LOG.info("Closing DeviceSession for %s", mac)
+            log.info("Closing DeviceSession for %s", mac)
             sess.close()
         # PCAP thread has its own KeyboardInterrupt handle
-        LOG.info("NetworkHandler closed")
+        log.info("NetworkHandler closed")
 
     def __del__(self):
         """Placeholder to see if session object destruction is a useful hook"""
-        LOG.debug("NetworkHandler del")
+        log = logging.getLogger(__name__)
+        log.debug("NetworkHandler del")
         self.close()
 
 # Main sesssion class
@@ -510,10 +518,11 @@ class DeviceSession(object):
     def packet_handler(self, packet):
         """Device Session Packet Handler. If packet was for
         this device then it will have been dispatched to here"""
+        log = logging.getLogger(__name__)
         if not packet.is_broadcast:
             # Look first to see if this is an ACK
             if packet.struc.c24header.c24cmd == COMMANDS['ack']:
-                LOG.debug('%s ACK FROM DEVICE', self.session_name)
+                log.debug('%s ACK FROM DEVICE', self.session_name)
                 if not self.backoff.is_alive():
                     self.sendlock.set()
             else:
@@ -522,7 +531,7 @@ class DeviceSession(object):
                 # Check to see if this is retry
                 if packet.is_retry():
                     self.current_retry_desk = retry = packet.struc.c24header.retry
-                    LOG.warn('%s Retry packets from desk: %d', self.session_name, retry)
+                    log.warn('%s Retry packets from desk: %d', self.session_name, retry)
                     # Try a send lock if desk is panicking, back off for a
                     # bit of time to let 'er breathe
                     self.sendlock.clear()
@@ -530,37 +539,39 @@ class DeviceSession(object):
                     self.backoff.start()
                 if packet.struc.c24header.numcommands > 0:
                     cmdnumber = packet.struc.c24header.sendcounter
-                    LOG.debug('%s RECEIVED %d', self.session_name, cmdnumber)
+                    log.debug('%s RECEIVED %d', self.session_name, cmdnumber)
                     # this counter changes to the value the DESK sends to us so we can ACK it
                     self.cmdcounter = cmdnumber
                     # forward it to the client
                     self.client_conn.send_bytes(packet.struc.packetdata)
-                    LOG.debug('%s ACK TO DEVICE: %d', self.session_name, self.cmdcounter)
+                    log.debug('%s ACK TO DEVICE: %d', self.session_name, self.cmdcounter)
                     time.sleep(TIMING_BEFORE_ACKT)
                     self.send_packet(self._prepare_ackt())
                     if not self.backoff.is_alive():
                         self.sendlock.set()
                 else:
-                    LOG.warn('%s Unhandled data from device :%02x', self.session_name, packet.struc.packetdata[0])
-                    LOG.debug('%s     unhandled: %s', self.session_name, hexl(packet.raw))
+                    log.warn('%s Unhandled data from device :%02x', self.session_name, packet.struc.packetdata[0])
+                    log.debug('%s     unhandled: %s', self.session_name, hexl(packet.raw))
 
     def receive_handler(self, buff, ncmds, buffsz):
-        LOG.debug('MP recv: c:%d s:%d d:%s', ncmds, buffsz,
+        """Receive Handler. TODO a better description"""
+        log = logging.getLogger(__name__)
+        log.debug('MP recv: c:%d s:%d d:%s', ncmds, buffsz,
                   hexl(buff[:buffsz]))
         pkt_data_len = buffsz  # len(buff)
         pkt_data = (c_ubyte * pkt_data_len).from_buffer_copy(buff)
         totalwait = 0.0
         while not self.sendlock.wait(TIMING_WAIT_DESC_ACK):
             totalwait += TIMING_WAIT_DESC_ACK
-            LOG.warn('Waiting for DESK ACK %d', totalwait)
+            log.warn('Waiting for DESK ACK %d', totalwait)
             #TODO implement daw-desk retry packets
-        LOG.debug('TODESK CMD %d', self.sendcounter)
+        log.debug('TODESK CMD %d', self.sendcounter)
         if not self.mac_device is None:
             packet = self._prepare_packetr(pkt_data, pkt_data_len, ncmds)
             self.send_packet(packet)
             self.sendlock.clear()
         else:
-            LOG.warn(
+            log.warn(
                 'MP received but no desk to send to. Establish a session. %s',
                 hexl(pkt_data))
 
@@ -604,11 +615,13 @@ class DeviceSession(object):
         return ack
 
     def _backoff(self):
-        LOG.debug('%s backoff complete', self.session_name)
+        log = logging.getLogger(__name__)
+        log.debug('%s backoff complete', self.session_name)
         self.sendlock.set()
 
     #--MULTI new process launcher
     def start_client(self):
+        log = logging.getLogger(__name__)
         device = self.bcast_data.device
         if device == 'CNTRL|24':
             target = control24_client.C24oscsession
@@ -617,7 +630,7 @@ class DeviceSession(object):
             target = procontrol_client.C24oscsession
             self.is_supported_device = True
         else:
-            LOG.error('No client code for this device ')   
+            log.error('No client code for this device ')   
             self.is_supported_device = False
             self.close()
 
@@ -627,7 +640,7 @@ class DeviceSession(object):
                 self.client_process.start()
             except RuntimeError:
                 pass
-                #LOG.warning("Client process already started. Normal when debugging.")
+                #log.warning("Client process already started. Normal when debugging.")
                 
         
         #while not self.client_process.is_alive():
@@ -652,7 +665,7 @@ class DeviceSession(object):
 
     def __init__(self, parent, number, device_mac, bcast_data):
         """Constructor to build the device session object"""
-        global LOG
+        log = logging.getLogger(__name__)
         # Create variables for a session
         #--MULTI new session things
         self.parent = parent
@@ -662,7 +675,7 @@ class DeviceSession(object):
         self.new_port()
         self.mac_device = MacAddress.from_buffer_copy(device_mac)
         self.bcast_data = bcast_data
-        LOG.info('Device detected: %s %s at %s',
+        log.info('Device detected: %s %s at %s',
             bcast_data.device,
             bcast_data.version,
             hexl(self.mac_device)
@@ -688,7 +701,7 @@ class DeviceSession(object):
         self.ethheader = EthHeader()
         self.ethheader.macsrc = MacAddress.from_buffer_copy(self.parent.mac_computer)
         self.ethheader.macdest = self.mac_device
-        LOG.debug(str(self.ethheader))
+        log.debug(str(self.ethheader))
         # Turn the device online
         self.init_device()        
         # Start the client process
@@ -707,7 +720,8 @@ class DeviceSession(object):
 
     def close(self):
         """Quit the device session gracefully if possible"""
-        LOG.info("%s closing", self.session_name)
+        log = logging.getLogger(__name__)
+        log.info("%s closing", self.session_name)
         # For threads under direct control this signals to please end
         self.is_closing = True
         # A bit of encouragement
@@ -715,11 +729,12 @@ class DeviceSession(object):
             if self.client_process.is_alive():
                 self.client_process.terminate()
         # PCAP thread has its own KeyboardInterrupt handle
-        LOG.info("% closed", self.session_name)
+        log.info("% closed", self.session_name)
 
     def __del__(self):
         """Placeholder to see if device session object destruction is a useful hook"""
-        LOG.debug("% del", self.session_name)
+        log = logging.getLogger(__name__)
+        log.debug("% del", self.session_name)
         self.close()
 
 
@@ -729,7 +744,7 @@ class DeviceSession(object):
 def main():
     """Main function declares options and initialisation routine for daemon."""
     #--MULTI - globalise NETHANDLER
-    global NETHANDLER, LOG
+    global NETHANDLER
 
     # Find networks on this machine, to determine good defaults
     # and help verify options
