@@ -34,7 +34,7 @@ if sys.platform.startswith('win'):
 
 DEFAULTS = {
     'ip':'0.0.0.0',
-    'daemon':9123,
+    'daemon':9124,
     'control24osc':9124,
     'oscDaw':9125,
     'auth':'be_in-control',

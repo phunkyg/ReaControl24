@@ -12,7 +12,8 @@ from ctypes import c_ubyte
 PCAP_FILTER = 'ether src %s and ether[12:2]=0x885f'
 
 MAC = '00:a0:7e:a0:17:fe'
-DEVICE = 'MAINUNIT'
+#DEVICE = 'MAINUNIT'
+DEVICE = 'CNTRL|24'
 VERSION = '1.37'
 
 ADAPTER = 'en0'

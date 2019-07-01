@@ -685,7 +685,9 @@ class DeviceSession(object):
         self.client_is_connected = False
         #--MULTI slightly hacky, but preparing the client instance arguments in the same format
         # as they are used when launching as a command line process
-        self.client_args = ({'connect': self.daw_address}, self.parent.network, self.client_conn)
+        #self.client_args = ({'connect': self.daw_address}, self.parent.network, self.client_conn)
+        #--MULTI trying passing all the opts through
+        self.client_args = (self.parent.thru_params[0], self.parent.network, self.client_conn)
         self.is_closing = False
         self.is_supported_device = False
         self.last_sent = tick()
@@ -729,12 +731,12 @@ class DeviceSession(object):
             if self.client_process.is_alive():
                 self.client_process.terminate()
         # PCAP thread has its own KeyboardInterrupt handle
-        log.info("% closed", self.session_name)
+        log.info("%s closed", self.session_name)
 
     def __del__(self):
         """Placeholder to see if device session object destruction is a useful hook"""
         log = logging.getLogger(__name__)
-        log.debug("% del", self.session_name)
+        log.debug("%s del", self.session_name)
         self.close()
 
 
@@ -761,12 +763,19 @@ def main():
         dest="network",
         help="Ethernet interface to the same network as the Control24. Default = %s" %
         default_iface)
-    default_listener = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('daemon'))
+    # default_listener = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('daemon'))
+    # oprs.add_option(
+    #     "-l",
+    #     "--listen",
+    #     dest="listen",
+    #     help="listen on given host:port. Default = %s" % default_listener)
+    # TODO did this to get it going but 9124 port will also need an auto-increment or alternative range
+    default_osc_client24 = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('control24osc'))
     oprs.add_option(
         "-l",
         "--listen",
         dest="listen",
-        help="listen on given host:port. Default = %s" % default_listener)
+        help="accept OSC client from DAW at host:port. default %s" % default_osc_client24)
     default_daw = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscDaw'))
     oprs.add_option(
         "-c",
@@ -774,7 +783,8 @@ def main():
         dest="connect",
         help="Connect to DAW OSC server at host:baseport. Baseport will increment for subsequent devices. default %s" % default_daw)
     oprs.set_defaults(network=default_iface)
-    oprs.set_defaults(listen=default_listener)
+    #oprs.set_defaults(listen=default_listener)
+    oprs.set_defaults(listen=default_osc_client24)
     oprs.set_defaults(connect=default_daw)
 
     # Parse and verify options
@@ -799,18 +809,24 @@ def main():
     #    SESSION = C24session(opts, networks)
 
     # Main thread when everything is initiated. Wait for interrupt
-    if sys.platform.startswith('win'):
-        # Set up Interrupt signal handler so daemon can close cleanly
-        for sig in SIGNALS:
-            signal.signal(sig, signal_handler)
-        while True:
-            try:
-                time.sleep(TIMING_MAIN_LOOP)
-            except KeyboardInterrupt:
-                break
-    else:
-        signal.pause()
+    # if sys.platform.startswith('win'):
+    #     # Set up Interrupt signal handler so daemon can close cleanly
+    #     for sig in SIGNALS:
+    #         signal.signal(sig, signal_handler)
+    #     while True:
+    #         try:
+    #             time.sleep(TIMING_MAIN_LOOP)
+    #         except KeyboardInterrupt:
+    #             break
+    # else:
+    #     signal.pause()
 
+    #--MULTI try this for a bit as above is going crayzee    
+    while True:
+        try:
+            time.sleep(TIMING_MAIN_LOOP)
+        except KeyboardInterrupt:
+            break
     NETHANDLER.close()
 
 
