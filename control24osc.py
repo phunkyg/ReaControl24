@@ -1436,46 +1436,52 @@ class C24oscsession(object):
         """Contructor to build the client session object"""
         self.log = start_logging("control24osc", opts.logdir, opts.debug)
         self.desk = C24desk(self)
-        self.standalone = pipe is None
-        if self.standalone:
-            self.server = OSC.parseUrlStr(opts.server)[0]
-            self.server_pipe = None
-        else:
-            self.server = None
-            self.server_pipe = pipe
-        self.listen = OSC.parseUrlStr(opts.listen)[0]
-        self.connect = OSC.parseUrlStr(opts.connect)[0]
-        self.osc_listener = None
-        self.osc_listener_last = None
-        self.osc_client = None
-        self.osc_client_is_connected = False
-        self.c24_client = None
-        self.c24_client_is_connected = False
-        self.is_closing = False
+        try:
+            self.standalone = pipe is None
+            if self.standalone:
+                self.server = OSC.parseUrlStr(opts.server)[0]
+                self.server_pipe = None
+                self.log.debug('control24osc Starting up in STANDALONE mode')
+            else:
+                self.server = None
+                self.server_pipe = pipe
+                self.log.debug('control24osc Starting up in SUBPROCESS mode')
+            self.listen = OSC.parseUrlStr(opts.listen)[0]
+            self.connect = OSC.parseUrlStr(opts.connect)[0]
+            self.osc_listener = None
+            self.osc_listener_last = None
+            self.osc_client = None
+            self.osc_client_is_connected = False
+            self.c24_client = None
+            self.c24_client_is_connected = False
+            self.is_closing = False
 
-        # Start a thread to manage the connection to the control24d
-        self.thread_c24_client = threading.Thread(
-            target=self._manage_c24_client,
-            name='thread_c24_client'
-        )
-        self.thread_c24_client.daemon = True
-        self.thread_c24_client.start()
+            # Start a thread to manage the connection to the control24d
+            self.thread_c24_client = threading.Thread(
+                target=self._manage_c24_client,
+                name='thread_c24_client'
+            )
+            self.thread_c24_client.daemon = True
+            self.thread_c24_client.start()
 
-        # Start a thread to manage the OSC Listener
-        self.thread_osc_listener = threading.Thread(
-            target=self._manage_osc_listener,
-            name='thread_osc_listener'
-        )
-        self.thread_osc_listener.daemon = True
-        self.thread_osc_listener.start()
+            # Start a thread to manage the OSC Listener
+            self.thread_osc_listener = threading.Thread(
+                target=self._manage_osc_listener,
+                name='thread_osc_listener'
+            )
+            self.thread_osc_listener.daemon = True
+            self.thread_osc_listener.start()
 
-        # Start a thread to manage the OSC Client
-        self.thread_osc_client = threading.Thread(
-            target=self._manage_osc_client,
-            name='thread_osc_client'
-        )
-        self.thread_osc_client.daemon = True
-        self.thread_osc_client.start()
+            # Start a thread to manage the OSC Client
+            self.thread_osc_client = threading.Thread(
+                target=self._manage_osc_client,
+                name='thread_osc_client'
+            )
+            self.thread_osc_client.daemon = True
+            self.thread_osc_client.start()
+        except:
+            self.log.error('Error in control24 osc client', exc_info=True)
+            raise
 
     def __str__(self):
         """pretty print session state if requested"""

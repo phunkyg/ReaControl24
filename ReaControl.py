@@ -819,14 +819,14 @@ def main():
             except KeyboardInterrupt:
                 break
     else:
-        signal.pause()
+        #signal.pause()
+        #--MULTI try this for a bit as above is going crayzee   
+        for sig in SIGNALS:
+            signal.signal(sig, signal_handler) 
+    
+        while True:
+            time.sleep(TIMING_MAIN_LOOP)
 
-    #--MULTI try this for a bit as above is going crayzee    
-    # while True:
-    #     try:
-    #         time.sleep(TIMING_MAIN_LOOP)
-    #     except KeyboardInterrupt:
-    #         break
     NETHANDLER.close()
 
 
