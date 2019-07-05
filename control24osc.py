@@ -227,6 +227,7 @@ class C24nav(C24base):
     }
 
     def __init__(self, desk):
+        self.log = desk.log
         self.desk = desk
         # Global / full desk level modes and modifiers
         self.modemgr = ModeManager(self.navmodes)
@@ -258,6 +259,7 @@ class C24modifiers(C24base):
     keys"""
 
     def __init__(self, desk):
+        self.log = desk.log
         self.desk = desk
         self.shift = False
         self.option = False
@@ -461,6 +463,7 @@ class C24clock(C24base):
         return ''.join([text, ' '])
 
     def __init__(self, desk):
+        self.log = desk.log
         self.desk = desk
         self.text = {}
         self.op_list = None
@@ -538,6 +541,7 @@ class C24vumeter(C24base):
     ]
 
     def __init__(self, track):
+        self.log = track.desk.log
         self.track = track
         self.vu_val = {'postfader': [(0, 0), (0, 0)], 'prefader': [
             (0, 0), (0, 0)]}
@@ -586,7 +590,7 @@ class C24scribstrip(C24base):
 
     def __init__(self, track):
         self.track = track
-        self.log = track.log
+        self.log = track.desk.log
         self.mode = track.mode
         defaulttext = '  {num:02d}'.format(num=self.track.track_number + 1)
         self.dtext4ch = defaulttext
@@ -661,6 +665,7 @@ class C24jpot(C24base):
     #'ValueByte': 3
 
     def __init__(self, track):
+        self.log = track.desk.log
         self.track = track
         self.cmdbytes = (c_ubyte * 30)()
         self.val = 0
@@ -784,6 +789,7 @@ class C24vpot(C24base):
     fine = float(0.005)
 
     def __init__(self, track):
+        self.log = track.desk.log
         self.track = track
         self.pang = 0
         self.panv = 0,
@@ -876,6 +882,7 @@ class C24fader(C24base):
     faderscale = C24base.calc_faderscale()
 
     def __init__(self, track):
+        self.log = track.desk.log
         self.track = track
         self.gain = None
         self.cmdbytes = (c_ubyte * 5)()
@@ -977,6 +984,7 @@ class C24buttonled(C24base):
         '/button', [0x90, 0x00, 0x00], 1, None, mapping_osc)
 
     def __init__(self, desk, track):
+        self.log = desk.log
         self.desk = desk
         self.track = track
         self.cmdbytes = (c_ubyte * 3)()
@@ -1021,6 +1029,7 @@ class C24automode(C24base):
     }
 
     def __init__(self, desk, track):
+        self.log = desk.log
         self.desk = desk
         self.track = track
         self.cmdbytes = (c_ubyte * 30)()

@@ -329,11 +329,11 @@ class ManageListener(threading.Thread):
         """listener management loop"""
         log = logging.getLogger(__name__)
         recvbuffer = create_string_buffer(self.cmd_buffer_length)
+        log.info('%s Pipe Listener waiting for first data from pid %d',
+                    self.name, self.session.client_process.pid)
         # Loop to manage connect/disconnect events
         while not self.session.is_closing:
             try:
-                log.info('%s Pipe Listener waiting for first data from pid %d',
-                         self.name, self.session.client_process.pid)
                 while self.session.client_is_connected:
                     buffsz = 0
                     if self.mp_conn.poll(TIMING_LISTENER_POLL):
@@ -353,7 +353,7 @@ class ManageListener(threading.Thread):
                         self.session.receive_handler(recvbuffer.raw, ncmds, buffsz)
 
             except Exception:
-                log.error("%s Pipe Listener Uncaught exception", self.name, exc_info=True)
+                log.error("%s Pipe Listener exception", self.name, exc_info=True)
                 raise
 
         # close down gracefully
@@ -809,24 +809,24 @@ def main():
     #    SESSION = C24session(opts, networks)
 
     # Main thread when everything is initiated. Wait for interrupt
-    # if sys.platform.startswith('win'):
-    #     # Set up Interrupt signal handler so daemon can close cleanly
-    #     for sig in SIGNALS:
-    #         signal.signal(sig, signal_handler)
-    #     while True:
-    #         try:
-    #             time.sleep(TIMING_MAIN_LOOP)
-    #         except KeyboardInterrupt:
-    #             break
-    # else:
-    #     signal.pause()
+    if sys.platform.startswith('win'):
+        # Set up Interrupt signal handler so daemon can close cleanly
+        for sig in SIGNALS:
+            signal.signal(sig, signal_handler)
+        while True:
+            try:
+                time.sleep(TIMING_MAIN_LOOP)
+            except KeyboardInterrupt:
+                break
+    else:
+        signal.pause()
 
     #--MULTI try this for a bit as above is going crayzee    
-    while True:
-        try:
-            time.sleep(TIMING_MAIN_LOOP)
-        except KeyboardInterrupt:
-            break
+    # while True:
+    #     try:
+    #         time.sleep(TIMING_MAIN_LOOP)
+    #     except KeyboardInterrupt:
+    #         break
     NETHANDLER.close()
 
 
