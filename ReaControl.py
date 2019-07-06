@@ -519,13 +519,13 @@ class DeviceSession(object):
         """Device Session Packet Handler. If packet was for
         this device then it will have been dispatched to here"""
         log = logging.getLogger(__name__)
-        if not packet.is_broadcast:
+        if not packet.is_broadcast():
             # Look first to see if this is an ACK
             if packet.struc.c24header.c24cmd == COMMANDS['ack']:
                 log.debug('%s ACK FROM DEVICE', self.session_name)
                 if not self.backoff.is_alive():
                     self.sendlock.set()
-            else:
+            elif packet.struc.c24header.numcommands > 0:
                 # At this point an ACK is pending so lock all sending
                 self.sendlock.clear()
                 # Check to see if this is retry
