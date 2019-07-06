@@ -636,6 +636,7 @@ class DeviceSession(object):
 
         if self.is_supported_device:
             self.client_process = Process(target = target, args = self.client_args)
+            self.client_process.daemon = False
             try:
                 self.client_process.start()
             except RuntimeError:

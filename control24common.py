@@ -71,7 +71,9 @@ def fix_ownership(path):
         os.chown(path, int(uid), int(gid))
 
 def start_logging(name, logdir, debug=False):
-    """Configure logging for the program"""
+    """Configure logging for the program
+    :rtype:
+    """
     # Set logging
     logformat = DEFAULTS.get('logformat')
     loghead = ''.join(c for c in logformat if c not in '$()%')
@@ -86,6 +88,8 @@ def start_logging(name, logdir, debug=False):
             os.umask(original_umask)
 
     root_logger = logging.getLogger(name)
+    # We always want independent loggers
+    root_logger.propagate = False
     if debug:
         root_logger.setLevel(logging.DEBUG)
     else:
@@ -100,9 +104,10 @@ def start_logging(name, logdir, debug=False):
     # Subsequent lines get formatted
     log_formatter = logging.Formatter(logformat)
     log_f.setFormatter(log_formatter)
-    log_s = logging.StreamHandler()
-    # if this inherits root logger level then remove else put back: log_s.setLevel()
-    root_logger.addHandler(log_s)
+    # for now only the main process will log to the terminal
+    if name == '__main__':
+        log_s = logging.StreamHandler()
+        root_logger.addHandler(log_s)
     return root_logger
 
 

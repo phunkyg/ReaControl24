@@ -1299,7 +1299,7 @@ class C24oscsession(object):
 
     # Threaded methods
     def _manage_c24_client(self):
-        
+        self.log.debug('Daemon client thread starting')
         while not self.is_closing:
             if self.standalone:
                 # Poll for a connection, in case server is not up
@@ -1341,9 +1341,10 @@ class C24oscsession(object):
         if self.c24_client_is_connected:
             self.c24_client.close()
             self.c24_client_is_connected = False
+        self.log.debug('Daemon client thread finished')
 
     def _manage_osc_listener(self):
-        
+        self.log.debug('OSC listener thread starting')
         self.osc_listener = OSC.OSCServer(
             self.listen)
         # Register OSC Listener handler methods
@@ -1362,9 +1363,10 @@ class C24oscsession(object):
                 #raise
             self.log.debug('OSC Listener stopped')
             time.sleep(TIMING_OSC_LISTENER_RESTART)
+        self.log.debug('OSC listener thread finished')
 
     def _manage_osc_client(self):
-        
+        self.log.debug('OSC client thread starting')
         testmsg = OSC.OSCMessage('/print')
         testmsg.append('hello DAW')
 
@@ -1389,13 +1391,14 @@ class C24oscsession(object):
                 try:
                     self.osc_client.send(testmsg)
                 except OSC.OSCClientError:
-                    self.log.error("Sending Test message got an error. DAW is no longer reponding.")
+                    self.log.error("Sending Test message got an error. DAW is no longer responding.")
                     self._disconnect_osc_client()
                 except Exception:
                     self.log.error("OSC Client Unhandled exception", exc_info=True)
                     raise
                 time.sleep(TIMING_OSC_CLIENT_LOOP)
             time.sleep(TIMING_OSC_CLIENT_RESTART)
+        self.log.debug('OSC client thread finished')
 
     # common methods for disconnects (starting some tidying and DRY)
     def _disconnect_osc_client(self):
@@ -1461,7 +1464,7 @@ class C24oscsession(object):
                 target=self._manage_c24_client,
                 name='thread_c24_client'
             )
-            self.thread_c24_client.daemon = True
+            #self.thread_c24_client.daemon = True
             self.thread_c24_client.start()
 
             # Start a thread to manage the OSC Listener
@@ -1469,7 +1472,7 @@ class C24oscsession(object):
                 target=self._manage_osc_listener,
                 name='thread_osc_listener'
             )
-            self.thread_osc_listener.daemon = True
+            #self.thread_osc_listener.daemon = True
             self.thread_osc_listener.start()
 
             # Start a thread to manage the OSC Client
@@ -1477,8 +1480,10 @@ class C24oscsession(object):
                 target=self._manage_osc_client,
                 name='thread_osc_client'
             )
-            self.thread_osc_client.daemon = True
+            #self.thread_osc_client.daemon = True
             self.thread_osc_client.start()
+
+            self.thread_c24_client.join()
         except:
             self.log.error('Error in control24 osc client', exc_info=True)
             raise
@@ -1556,10 +1561,6 @@ def main():
     if SESSION is None:
         # start logging if main
         SESSION = C24oscsession(opts, networks)
-
-    # an OSC testing message
-    testmsg = OSC.OSCMessage('/print')
-    testmsg.append('Hello DAW. I am the ReaControl OSC Client')
 
     # Main Loop once session initiated
     while True:
