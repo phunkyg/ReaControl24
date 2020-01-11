@@ -1119,6 +1119,7 @@ class C24oscsession(object):
                 current.append(item)
                 yield current
                 current = []
+            #TODO change 'in splitlist' to just use MSB as all MIDI status bytes have this bit set.    
             elif ord(item) in C24oscsession.splitlist and not current == []:
                 yield current
                 current = [item]
