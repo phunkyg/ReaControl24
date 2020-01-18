@@ -96,7 +96,7 @@ When supplying a network name, either the name or the GUID will work. If you are
 
 Copy the files to your system in a reasonable spot (your REAPER Scripts directory for example) where you will be able to run the python programs and log files can be created.
 
-For a quick start, if your DAW and Control24 are on the same LAN, and you intend to run this middleware on your DAW PC:
+For a quick start, if your DAW and Control24 are on the same LAN, and you intend to run this middleware on your DAW computer:
 
 * Set up Reaper.OSC for your environment. See the additional guide below for details.
 * For windows start one Administrator command prompt, for other OS a normal terminal will do and use 'sudo'. 
@@ -132,9 +132,9 @@ Setting up Reaper.OSC is detailed in the Reaper documentation, but here is a qui
     * *Device Name* = any suitable name e.g. "ReaControl24"
     * *Mode* = Configure device IP + local port
     * *Device Port* = 9124
-    * *Device IP* = The IP address of the PC running ReaControl client process e.g: 192.168.1.10
+    * *Device IP* = The IP address of the computer running ReaControl client process e.g: 192.168.1.10
     * *Local listen port* = 9125
-    * *Local IP* = The IP address of the Reaper PC on the same network or the same PC e.g: 192.168.1.10
+    * *Local IP* = The IP address of the Reaper computer on the same network or the same computer e.g: 192.168.1.10
     * *Allow binding...learn* = Tick/Yes
     * *If outgoing packets..... values* = The defaults are fine
 * Click OK to save the Reaper.OSC configuration. Your new entry should appear in the list
