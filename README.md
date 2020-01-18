@@ -1,3 +1,17 @@
+# WELCOME ALL TESTERS!
+
+You are in the DEV_OtherDevices branch which means you're probably here to do some testing. Thanks for your help!
+
+This README gets developed along with the code, so we'll be updating this as we go along. It may therefore be out of date.
+
+Current notes for using this branch:
+
+* You'll probably be asked to use the debug flag at some point (-d) to get some logs to the devs, see below
+* The client process doesn't need running manually, it is auto-launched from the daemon process
+
+
+
+
 # ReaControl24
 
 Control24 digital control surface protocol middleware for Reaper.
@@ -94,11 +108,6 @@ Start the deamon process with (yes you DO need sudo, or for windows omit sudo an
 sudo python control24d.py
 ```
 
-Start the osc client process with:
-
-```
-python control24osc.py
-```
 
 ### Advanced options
 
