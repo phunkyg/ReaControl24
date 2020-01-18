@@ -95,18 +95,49 @@ When supplying a network name, either the name or the GUID will work. If you are
 ## Getting Started
 
 Copy the files to your system in a reasonable spot (your REAPER Scripts directory for example) where you will be able to run the python programs and log files can be created.
+
 For a quick start, if your DAW and Control24 are on the same LAN, and you intend to run this middleware on your DAW PC:
 
-Copy the provided Reaper.OSC file into the correct directory on your system for such files. You will find a convenient button in the reaper dialogs to find this for you when configuring the csurf plugin.
-
-Start REAPER DAW and configure the Control Surface OSC Plugin. Use your local IP address (not localhost or 0.0.0.0)
-Set ports as client 9124 and listener 9125.
-
-Start the deamon process with (yes you DO need sudo, or for windows omit sudo and use Administrator command prompt):
-
+* Set up Reaper.OSC for your environment. See the additional guide below for details.
+* For windows start one Administrator command prompt, for other OS a normal terminal will do and use 'sudo'. 
+* Run the *daemon process*
 ```
 sudo python control24d.py
 ```
+
+* You should see a little feedback in each window as each component connects to the others
+* If you have problems:
+    * try adding the debug switch (-d) to the command lines to get much more feedback
+    * The Log files will also contain a detailed CSV version of what you see
+    * If your network addresses and ports aren't right, try supplying the network switch on the daemon process (-n) with a rubbish name. This will dump a list of valid networks to help you choose.
+```
+sudo python control24d.py -n NO_NETWORK
+```
+
+### How to set up Reaper.OSC
+
+Setting up Reaper.OSC is detailed in the Reaper documentation, but here is a quick guide to the required steps for ReaControl24:
+
+* Start Reaper
+* Go to the *Preferences* dialog
+* Scroll the left-hand side panel to the bottom and locate *Control/OSC/web*
+* In the right-hand panel click *Add*
+* Set the *Control surface mode* drop-down box to *OSC (Open Sound Control)*
+* Click the *Pattern Config* drop-down box and choose *(open config directory)*
+* Finder or Windows Explorer will now open at the OSC config files directory for your system
+* Copy or move the *Control24.ReaperOSC* file provided with ReaControl24 into this directory
+* Return to the Reaper OSC dialog (which should still be open) and again Click the *Pattern Config* drop-down box. Choose *(refresh list)*
+* Click the *Pattern Config* drop-down box a final time, this time you should see and choose *Control24*
+* Complete the rest of the configuration in the dialog. The settings below are an example and may vary for your environment:
+    * *Device Name* = any suitable name e.g. "ReaControl24"
+    * *Mode* = Configure device IP + local port
+    * *Device Port* = 9124
+    * *Device IP* = The IP address of the PC running ReaControl client process e.g: 192.168.1.10
+    * *Local listen port* = 9125
+    * *Local IP* = The IP address of the Reaper PC on the same network or the same PC e.g: 192.168.1.10
+    * *Allow binding...learn* = Tick/Yes
+    * *If outgoing packets..... values* = The defaults are fine
+* Click OK to save the Reaper.OSC configuration. Your new entry should appear in the list
 
 
 ### Advanced options
