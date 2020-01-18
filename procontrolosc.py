@@ -1468,6 +1468,7 @@ class C24oscsession(object):
             self.c24_client_is_connected = False
             self.is_closing = False
 
+
             # Start a thread to manage the connection to the procontrold
             self.thread_c24_client = threading.Thread(
                 target=self._manage_c24_client,
