@@ -281,9 +281,10 @@ class C24modifiers(C24base):
             setattr(self, button, bool(val))
 
 
-class C24desk(C24base):
+class ProCdesk(C24base):
     """Class to represent the desk, state and
     instances to help conversions and behaviour"""
+    channels = 8
 
     def __init__(self, parent):
         # TODO original mode management to be deprecated
@@ -293,8 +294,8 @@ class C24desk(C24base):
         self.c24_client_send = parent.c24_client_send
         self.log = parent.log
         # Set up the child track objects
-        self.c24tracks = [C24track(self, track_number)
-                          for track_number in range(0, 32)]
+        self.c24tracks = [ProCtrack(self, track_number)
+                          for track_number in range(0, channels-1)]
         self.c24clock = C24clock(self)
         self.c24buttonled = C24buttonled(self, None)
         self.c24nav = C24nav(self)
@@ -328,9 +329,9 @@ class C24desk(C24base):
                 track.c24scribstrip.c_d(['c24scribstrip', 'long'], [piece])
 
 
-class C24track(C24base):
+class ProCtrack(C24base):
     """Track (channel strip) object to contain
-    one each of the bits found in each of the 24 main tracks"""
+    one each of the bits found in each of the main tracks"""
 
     def __init__(self, desk, track_number):
         self.desk = desk
@@ -352,8 +353,8 @@ class C24track(C24base):
             # as it physically belongs there
             self.desk.c24jpot = self.c24vpot
 
-        if self.track_number <= CHANNELS or self.track_number in range(25, 27):
-            self.c24scribstrip = C24scribstrip(self)
+        if self.track_number <= self.desk.channels:
+            self.c24scribstrip = ProCscribstrip(self)
 
 
 class C24clock(C24base):
@@ -586,7 +587,7 @@ class C24vumeter(C24base):
         return C24vumeter.meterscale[int(val * 15)]
 
 
-class C24scribstrip(C24base):
+class ProCscribstrip(C24base):
     """Class to hold and convert scribblestrip value representations"""
 
     # 0xf0, 0x13, 0x01 = Displays
@@ -594,6 +595,8 @@ class C24scribstrip(C24base):
     # 0x00             = track/strip
     # 0x00, 0x00, 0x00, 0x00 = 4 'ascii' chars to display
     # 0xf7             = terminator
+    
+    digits = 8
 
     def __init__(self, track):
         self.track = track
@@ -609,7 +612,7 @@ class C24scribstrip(C24base):
 
         for ind, byt in enumerate(
                 [0xf0, 0x13, 0x01, 0x40, self.track.track_number,
-                 0x00, 0x00, 0x00, 0x00, 0x00, 0xf7]):
+                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf7]):
             self.cmdbytes[ind] = byt
 
     def __str__(self):
@@ -623,7 +626,7 @@ class C24scribstrip(C24base):
 
         self.transform_text()
         self.cmdbytes[6:10] = [ord(thischar) for thischar in self.dtext4ch]
-        self.log.debug('c24scribstrip mode state: %s = %s',
+        self.log.debug('ProCscribstrip mode state: %s = %s',
                        self.mode, self.dtext4ch)
         self.track.desk.c24_client_send(self.cmdbytes)
 
@@ -1112,7 +1115,7 @@ class C24automode(C24base):
 
 
 # Class for the client session
-class C24oscsession(object):
+class ProCoscsession(object):
     mapping_tree = MAPPING_TREE
     # Extract a list of first level command bytes from the mapping tree
     # To use for splitting up multiplexed command sequences
@@ -1447,7 +1450,7 @@ class C24oscsession(object):
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
         self.log = start_logging("procontrolosc", opts.logdir, opts.debug)
-        self.desk = C24desk(self)
+        self.desk = ProCdesk(self)
         try:
             self.standalone = pipe is None
             if self.standalone:
@@ -1570,7 +1573,7 @@ def main():
     # Build the session
     if SESSION is None:
         # start logging if main
-        SESSION = C24oscsession(opts, networks)
+        SESSION = ProCoscsession(opts, networks)
 
     # Main Loop once session initiated
     while True:
