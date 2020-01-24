@@ -627,7 +627,7 @@ class DeviceSession(object):
             target = control24_client.C24oscsession
             self.is_supported_device = True
         elif device == 'MAINUNIT':
-            target = procontrol_client.C24oscsession
+            target = procontrol_client.ProCoscsession
             self.is_supported_device = True
         else:
             log.error('No client code for this device ')   
