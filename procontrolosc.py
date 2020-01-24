@@ -596,6 +596,13 @@ class ProCscribstrip(C24base):
     # 0x00, 0x00, 0x00, 0x00 = 4 'ascii' chars to display
     # 0xf7             = terminator
     
+    # f0 13 00 40 0e 00 68 61 73 20 61 20 20 20 f7
+    # f0 13 00 40 0f 00 64 69 61 6c 6f 67 20 20 f7
+    # f0 13 00 40 10 00 6f 6e 20 20 20 20 20 20 f7
+    
+    # f0 13 00 40 02 00 20 20 20 20 20 20 20 20 f7
+    # could be offset track numbers? 0x0e > 8
+    
     digits = 8
 
     def __init__(self, track):
@@ -611,7 +618,7 @@ class ProCscribstrip(C24base):
             float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
 
         for ind, byt in enumerate(
-                [0xf0, 0x13, 0x01, 0x40, self.track.track_number,
+                [0xf0, 0x13, 0x00, 0x40, self.track.track_number,
                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf7]):
             self.cmdbytes[ind] = byt
 
