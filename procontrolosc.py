@@ -295,7 +295,7 @@ class ProCdesk(C24base):
         self.log = parent.log
         # Set up the child track objects
         self.c24tracks = [ProCtrack(self, track_number)
-                          for track_number in range(0, channels-1)]
+                          for track_number in range(0, self.channels-1)]
         self.c24clock = C24clock(self)
         self.c24buttonled = C24buttonled(self, None)
         self.c24nav = C24nav(self)
@@ -1137,7 +1137,7 @@ class ProCoscsession(object):
                 current.append(item)
                 yield current
                 current = []
-            elif ord(item) in C24oscsession.splitlist and not current == []:
+            elif ord(item) in ProCoscsession.splitlist and not current == []:
                 yield current
                 current = [item]
             else:
@@ -1153,7 +1153,7 @@ class ProCoscsession(object):
         elif inlist[0] == 0x00:
             return inlist
 
-        return [subl for subl in C24oscsession.itsplit(inlist) if subl]
+        return [subl for subl in ProCoscsession.itsplit(inlist) if subl]
 
     @staticmethod
     def parsecmd(cmdbytes):
@@ -1169,7 +1169,7 @@ class ProCoscsession(object):
         parsedcmd["lkpbytes"] = []
         this_byte_num = 0
         this_byte = ord(cmdbytes[this_byte_num])
-        lkp = C24oscsession.mapping_tree
+        lkp = ProCoscsession.mapping_tree
         level = 0
         while not this_byte_num is None:
             parsedcmd["lkpbytes"].append(this_byte)
@@ -1239,10 +1239,10 @@ class ProCoscsession(object):
     def _desk_to_daw(self, c_databytes):
 
         self.log.debug(binascii.hexlify(c_databytes))
-        commands = C24oscsession.cmdsplit(c_databytes)
+        commands = ProCoscsession.cmdsplit(c_databytes)
         self.log.debug('nc: %d', len(commands))
         for cmd in commands:
-            parsed_cmd = C24oscsession.parsecmd(cmd)
+            parsed_cmd = ProCoscsession.parsecmd(cmd)
             if parsed_cmd:
                 address = parsed_cmd.get('address')
                 self.log.debug(parsed_cmd)
