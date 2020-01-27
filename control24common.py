@@ -43,7 +43,8 @@ DEFAULTS = {
     'scribble':'/track/c24scribstrip/name',
     'logdir':'./logs',
     'logformat':'%(asctime)s\t%(name)s\t%(levelname)s\t' +
-                '%(threadName)s\t%(funcName)s\t%(lineno)d\t%(message)s'
+                '%(threadName)s\t%(funcName)s\t%(lineno)d\t%(message)s',
+    'timing_scribble_restore':1
 }
 
 COMMANDS = {

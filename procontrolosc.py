@@ -609,14 +609,15 @@ class ProCscribstrip(C24base):
         self.track = track
         self.log = track.desk.log
         self.mode = track.mode
-        defaulttext = '  {num:02d}'.format(num=self.track.track_number + 1)
-        self.dtext4ch = defaulttext
+        defaulttext = '     {num:03d}'.format(num=self.track.track_number + 1)
+        self.dtext8ch = defaulttext
         self.text = {'/track/number': defaulttext}
         self.numbytes = ProCscribstrip.digits + 7;
         self.cmdbytes = (c_ubyte * self.numbytes)()
+        self.timing_restore = float(DEFAULTS.get('timing_scribble_restore'))
 
         self.restore_timer = threading.Timer(
-            float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
+            self.timing_restore, self.restore_desk_display)
 
         for ind, byt in enumerate(
                 [0xf0, 0x13, 0x00, 0x40, self.track.track_number,
@@ -633,9 +634,9 @@ class ProCscribstrip(C24base):
     def set_current_display(self):
 
         self.transform_text()
-        self.cmdbytes[6:10] = [ord(thischar) for thischar in self.dtext4ch]
+        self.cmdbytes[6:ProCscribstrip.digits+6] = [ord(thischar) for thischar in self.dtext8ch]
         self.log.debug('ProCscribstrip mode state: %s = %s',
-                       self.mode, self.dtext4ch)
+                       self.mode, self.dtext8ch)
         self.track.desk.c24_client_send(self.cmdbytes)
 
     def restore_desk_display(self):
@@ -656,9 +657,9 @@ class ProCscribstrip(C24base):
                 if nco != 48:
                     little = chr(nco - 26)
                     dtext = dtext[:dpp] + little + dtext[dpp + 1:]
-            self.dtext4ch = '{txt: <4}'.format(txt=dtext[:4])
+            self.dtext8ch = '{txt: <'+str(ProCscribstrip.digits)+'}'.format(txt=dtext[:ProCscribstrip.digits])
         else:
-            self.dtext4ch = '    '
+            self.dtext8ch = ' ' * ProCscribstrip.digits
 
     def c_d(self, addrlist, stuff):
         """Update from DAW text"""
@@ -673,7 +674,7 @@ class ProCscribstrip(C24base):
             if self.restore_timer.isAlive:
                 self.restore_timer.cancel()
             self.restore_timer = threading.Timer(
-                float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
+                self.timing_restore, self.restore_desk_display)
             self.restore_timer.start()
 
 
