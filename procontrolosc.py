@@ -17,7 +17,7 @@ from optparse import OptionError
 
 import OSC
 
-from control24common import (CHANNELS, DEFAULTS, FADER_RANGE, NetworkHelper,
+from control24common import (DEFAULTS, FADER_RANGE, NetworkHelper,
                              opts_common, tick, SIGNALS, start_logging)
 from procontrolmap import MAPPING_TREE
 
@@ -295,7 +295,7 @@ class ProCdesk(C24base):
         self.log = parent.log
         # Set up the child track objects
         self.c24tracks = [ProCtrack(self, track_number)
-                          for track_number in range(0, self.channels-1)]
+                          for track_number in range(0, self.channels)]
         self.c24clock = C24clock(self)
         self.c24buttonled = C24buttonled(self, None)
         self.c24nav = C24nav(self)
@@ -340,7 +340,7 @@ class ProCtrack(C24base):
         self.mode = self.desk.mode
         self.osctrack_number = track_number + 1
 
-        if self.track_number <= CHANNELS:
+        if self.track_number <= self.desk.channels:
             self.c24fader = C24fader(self)
             self.c24vpot = C24vpot(self)
             self.c24vumeter = C24vumeter(self)
@@ -612,7 +612,8 @@ class ProCscribstrip(C24base):
         defaulttext = '  {num:02d}'.format(num=self.track.track_number + 1)
         self.dtext4ch = defaulttext
         self.text = {'/track/number': defaulttext}
-        self.cmdbytes = (c_ubyte * 12)()
+        self.numbytes = ProCscribstrip.digits + 7;
+        self.cmdbytes = (c_ubyte * self.numbytes)()
 
         self.restore_timer = threading.Timer(
             float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
