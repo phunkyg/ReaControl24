@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-MAPPING_TREE = {
+MAPPING_TREE_PROC = {
     0xB0: {
         'Address': 'track',
         'ChildByte': 1,
@@ -157,7 +157,7 @@ MAPPING_TREE = {
                             },
                             0x10: {
                                 'Address': 'ShowValues',
-                                'SetMode': '/track/c24scribstrip/pan',
+                                'SetMode': '/track/procscribstrip/pan',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
@@ -169,13 +169,13 @@ MAPPING_TREE = {
                             },
                             0x12: {
                                 'Address': 'ShowChannelNames',
-                                'SetMode': '/track/c24scribstrip/name',
+                                'SetMode': '/track/procscribstrip/name',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
                             0x13: {
                                 'Address': 'ShowInfo',
-                                'SetMode': '/track/c24scribstrip/volume',
+                                'SetMode': '/track/procscribstrip/volume',
                                 'Zone': 'Misc',
                                 'LED': True
                             },

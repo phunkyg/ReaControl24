@@ -19,7 +19,7 @@ import OSC
 
 from control24common import (DEFAULTS, FADER_RANGE, NetworkHelper,
                              opts_common, tick, SIGNALS, start_logging)
-from procontrolmap import MAPPING_TREE
+from procontrolmap import MAPPING_TREE_PROC
 
 '''
     This file is part of ReaProcontrol. Control Surface Middleware.
@@ -999,7 +999,7 @@ class C24buttonled(C24base):
     """ class to tidy up chunk of code from main c_d method
     for turning on/off button LED's """
     mapping_osc = {}
-    C24base.walk(MAPPING_TREE.get(0x90).get('Children'),
+    C24base.walk(MAPPING_TREE_PROC.get(0x90).get('Children'),
                  '/button', [0x90, 0x00, 0x00], 1, None, mapping_osc)
 
     def __init__(self, desk, track):
@@ -1126,7 +1126,7 @@ class C24automode(C24base):
 
 # Class for the client session
 class ProCoscsession(object):
-    mapping_tree = MAPPING_TREE
+    mapping_tree = MAPPING_TREE_PROC
     # Extract a list of first level command bytes from the mapping tree
     # To use for splitting up multiplexed command sequences
     splitlist = [key for key in mapping_tree.keys() if key != 0x00]
