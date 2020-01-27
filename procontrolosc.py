@@ -306,8 +306,8 @@ class ProCdesk(C24base):
         self.log.debug('Desk mode set: %s', mode)
         self.mode = mode
         for track in self.c24tracks:
-            if hasattr(track, 'c24scribstrip'):
-                track.c24scribstrip.restore_desk_display()
+            if hasattr(track, 'procscribstrip'):
+                track.procscribstrip.restore_desk_display()
 
     def get_track(self, track):
         """Safely access both the main tracks and any virtual
@@ -321,12 +321,12 @@ class ProCdesk(C24base):
             self.log.warn("No track exists with index %d", track)
             return None
 
-    def long_scribble(self, longtext96chars):
+    def long_scribble(self, longtextallchars):
         for track_number, track in enumerate(self.c24tracks):
-            if hasattr(track, 'c24scribstrip'):
-                psn = track_number * 4
-                piece = longtext96chars[psn:psn + 4]
-                track.c24scribstrip.c_d(['c24scribstrip', 'long'], [piece])
+            if hasattr(track, 'procscribstrip'):
+                psn = track_number * ProCscribstrip.digits
+                piece = longtextallchars[psn:psn + ProCscribstrip.digits]
+                track.procscribstrip.c_d(['procscribstrip', 'long'], [piece])
 
 
 class ProCtrack(C24base):
@@ -354,7 +354,7 @@ class ProCtrack(C24base):
             self.desk.c24jpot = self.c24vpot
 
         if self.track_number <= self.desk.channels:
-            self.c24scribstrip = ProCscribstrip(self)
+            self.procscribstrip = ProCscribstrip(self)
 
 
 class C24clock(C24base):
@@ -657,7 +657,8 @@ class ProCscribstrip(C24base):
                 if nco != 48:
                     little = chr(nco - 26)
                     dtext = dtext[:dpp] + little + dtext[dpp + 1:]
-            self.dtext8ch = '{txt: <'+str(ProCscribstrip.digits)+'}'.format(txt=dtext[:ProCscribstrip.digits])
+            fmtstring = '{txt: <'+str(ProCscribstrip.digits)+'}'
+            self.dtext8ch = fmtstring.format(txt=dtext[:ProCscribstrip.digits])
         else:
             self.dtext8ch = ' ' * ProCscribstrip.digits
 
