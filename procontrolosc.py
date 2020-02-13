@@ -18,7 +18,7 @@ from optparse import OptionError
 import OSC
 
 from control24common import (DEFAULTS, FADER_RANGE, NetworkHelper,
-                             opts_common, tick, SIGNALS, start_logging)
+                             opts_common, tick, SIGNALS, start_logging, trace)
 from procontrolmap import MAPPING_TREE_PROC
 
 '''
@@ -635,7 +635,7 @@ class ProCscribstrip(C24base):
 
         self.transform_text()
         self.cmdbytes[6:ProCscribstrip.digits+6] = [ord(thischar) for thischar in self.dtext8ch]
-        self.log.debug('ProCscribstrip mode state: %s = %s',
+        trace(self.log, 'ProCscribstrip mode state: %s = %s',
                        self.mode, self.dtext8ch)
         self.track.desk.c24_client_send(self.cmdbytes)
 
@@ -763,7 +763,7 @@ class C24jpot(C24base):
             else:
                 msg.append(self.out)
 
-            self.log.debug('%s', self)
+            trace(log, '%s', self)
             self.track.desk.osc_client_send(msg)
 
 
@@ -870,9 +870,9 @@ class C24vpot(C24base):
             self.cmdbytes[4], self.cmdbytes[5], self.cmdbytes[6] = led
             self.cmdbytes[4] = self.cmdbytes[4] | (self.track.track_number & 0x3f)
         except IndexError:
-            self.log.debug('VPOT LED lookup failure: %s', self)
+            self.log.warn('VPOT LED lookup failure: %s', self)
         self.track.desk.c24_client_send(self.cmdbytes)
-        self.log.debug('VPOT LED: %s', self)
+        trace(self.log, 'VPOT LED: %s', self)
 
     @staticmethod
     def led_value(pang):
@@ -1031,7 +1031,7 @@ class C24buttonled(C24base):
                 if ind == 2 and val == 1:
                     c_byt.value = c_byt.value | 0x40
                 self.cmdbytes[ind] = c_byt
-            self.log.debug("Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
+            trace(self.log, "Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
             self.desk.c24_client_send(self.cmdbytes)
         except KeyError:
             self.log.warn("OSCServer LED not found: %s %s", addr, str(val))
@@ -1241,9 +1241,9 @@ class ProCoscsession(object):
     # Event methods
     def _desk_to_daw(self, c_databytes):
 
-        self.log.debug(binascii.hexlify(c_databytes))
+        trace(self.log, binascii.hexlify(c_databytes))
         commands = ProCoscsession.cmdsplit(c_databytes)
-        self.log.debug('nc: %d', len(commands))
+        trace(self.log, 'nc: %d', len(commands))
         for cmd in commands:
             parsed_cmd = ProCoscsession.parsecmd(cmd)
             if parsed_cmd:
@@ -1320,7 +1320,7 @@ class ProCoscsession(object):
 
     # Threaded methods
     def _manage_c24_client(self):
-        self.log.debug('Daemon client thread starting')
+        trace(self.log, 'Daemon client thread starting')
         while not self.is_closing:
             if self.standalone:
                 # Poll for a connection, in case server is not up
@@ -1409,7 +1409,7 @@ class ProCoscsession(object):
                 self.osc_client_is_connected = False
                 time.sleep(TIMING_OSC_CLIENT_RESTART)
             while self.osc_client_is_connected and not self.is_closing:
-                self.log.debug("Sending Test message via OSC Client")
+                trace(self.log, "Sending Test message via OSC Client")
                 try:
                     self.osc_client.send(testmsg)
                 except OSC.OSCClientError:
@@ -1444,7 +1444,7 @@ class ProCoscsession(object):
                                exc_info=sys.exc_info())
                 self._disconnect_osc_client()
         else:
-            self.log.debug(
+            self.log.warn(
                 "OSC Client not connected but message send request received: %s", osc_msg)
 
     def c24_client_send(self, cmdbytes):
@@ -1452,7 +1452,7 @@ class ProCoscsession(object):
         are wrapped in a connection check"""
 
         if self.c24_client_is_connected:
-            self.log.debug("MP send: %s",
+            trace(self.log, "MP send: %s",
                            binascii.hexlify(cmdbytes))
             self.c24_client.send_bytes(cmdbytes)
 
@@ -1531,7 +1531,7 @@ class ProCoscsession(object):
     def __del__(self):
         """Placeholder to see if session object destruction is a useful hook"""
 
-        self.log.debug("C24oscsession del")
+        trace(self.log, "C24oscsession del")
         self.close()
 
 

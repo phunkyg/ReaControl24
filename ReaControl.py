@@ -21,7 +21,7 @@ import pcap
 
 from control24common import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
                              opts_common, tick, fix_ownership, SIGNALS,
-                             start_logging)
+                             start_logging, trace)
 
 #--MULTI can we import the client scripts?
 import control24osc as control24_client
@@ -304,7 +304,7 @@ class KeepAlive(threading.Thread):
             if self.session.parent.is_capturing and not self.session.mac_device is None:
                 delta = tick() - self.session.pcap_last_sent
                 if delta >= TIMING_KEEP_ALIVE:
-                    log.debug('%s KeepAlive TO DEVICE', self.session.session_name)
+                    log.trace('%s KeepAlive TO DEVICE', self.session.session_name)
                     self.session.send_packet(self.session.prepare_keepalive())
             time.sleep(TIMING_KEEP_ALIVE_LOOP)
 
@@ -392,13 +392,13 @@ class NetworkHandler(object):
         packet = pcl()
         packet = pcl.from_buffer_copy(pkt_data)
         #Detailed traffic logging
-        log.debug('Packet Received: %s', str(packet))
+        trace(log, 'Packet Received: %s', str(packet))
         # Decode any broadcast packets
         if packet.is_broadcast():
             broadcast = True
             pbp = POINTER(C24BcastData)
             bcast_data = cast(packet.struc.packetdata, pbp).contents
-            log.debug('%s', str(bcast_data))  
+            trace(log, '%s', str(bcast_data))
         #--MULTI check sessions and create if new
         src_mac = packet.struc.ethheader.macsrc
         src_session = self.sessions.get(str(src_mac))
@@ -419,7 +419,7 @@ class NetworkHandler(object):
         """sesion wrapper around pcap_sendpacket
         so we can pass in session and trap error"""
         log = logging.getLogger(__name__)
-        log.debug("Sending Packet of %d bytes: %s", pkt.pkt_tot_len, hexl(pkt.raw))
+        trace(log, "Sending Packet of %d bytes: %s", pkt.pkt_tot_len, hexl(pkt.raw))
         buf = pkt.to_buffer()
         pcap_status = self.pcap_sess.sendpacket(buf)
         if pcap_status != pkt.pkt_tot_len:
@@ -505,7 +505,7 @@ class NetworkHandler(object):
     def __del__(self):
         """Placeholder to see if session object destruction is a useful hook"""
         log = logging.getLogger(__name__)
-        log.debug("NetworkHandler del")
+        trace(log, "NetworkHandler del")
         self.close()
 
 # Main sesssion class
@@ -522,7 +522,7 @@ class DeviceSession(object):
         if not packet.is_broadcast():
             # Look first to see if this is an ACK
             if packet.struc.c24header.c24cmd == COMMANDS['ack']:
-                log.debug('%s ACK FROM DEVICE', self.session_name)
+                trace(log, '%s ACK FROM DEVICE', self.session_name)
                 if not self.backoff.is_alive():
                     self.sendlock.set()
             elif packet.struc.c24header.numcommands > 0:
@@ -539,19 +539,19 @@ class DeviceSession(object):
                     self.backoff.start()
                 if packet.struc.c24header.numcommands > 0:
                     cmdnumber = packet.struc.c24header.sendcounter
-                    log.debug('%s RECEIVED %d', self.session_name, cmdnumber)
+                    trace(log, '%s RECEIVED %d', self.session_name, cmdnumber)
                     # this counter changes to the value the DESK sends to us so we can ACK it
                     self.cmdcounter = cmdnumber
                     # forward it to the client
                     self.client_conn.send_bytes(packet.struc.packetdata)
-                    log.debug('%s ACK TO DEVICE: %d', self.session_name, self.cmdcounter)
+                    trace(log, '%s ACK TO DEVICE: %d', self.session_name, self.cmdcounter)
                     time.sleep(TIMING_BEFORE_ACKT)
                     self.send_packet(self._prepare_ackt())
                     if not self.backoff.is_alive():
                         self.sendlock.set()
                 else:
                     log.warn('%s Unhandled data from device :%02x', self.session_name, packet.struc.packetdata[0])
-                    log.debug('%s     unhandled: %s', self.session_name, hexl(packet.raw))
+                    trace(log, '%s     unhandled: %s', self.session_name, hexl(packet.raw))
 
     def receive_handler(self, buff, ncmds, buffsz):
         """Receive Handler. TODO a better description"""
@@ -565,7 +565,7 @@ class DeviceSession(object):
             totalwait += TIMING_WAIT_DESC_ACK
             log.warn('Waiting for DESK ACK %d', totalwait)
             #TODO implement daw-desk retry packets
-        log.debug('TODESK CMD %d', self.sendcounter)
+        trace(log, 'TODESK CMD %d', self.sendcounter)
         if not self.mac_device is None:
             packet = self._prepare_packetr(pkt_data, pkt_data_len, ncmds)
             self.send_packet(packet)
@@ -616,7 +616,7 @@ class DeviceSession(object):
 
     def _backoff(self):
         log = logging.getLogger(__name__)
-        log.debug('%s backoff complete', self.session_name)
+        trace(log, '%s backoff complete', self.session_name)
         self.sendlock.set()
 
     #--MULTI new process launcher
@@ -704,7 +704,7 @@ class DeviceSession(object):
         self.ethheader = EthHeader()
         self.ethheader.macsrc = MacAddress.from_buffer_copy(self.parent.mac_computer)
         self.ethheader.macdest = self.mac_device
-        log.debug(str(self.ethheader))
+        trace(log, str(self.ethheader))
         # Turn the device online
         self.init_device()        
         # Start the client process
@@ -737,7 +737,7 @@ class DeviceSession(object):
     def __del__(self):
         """Placeholder to see if device session object destruction is a useful hook"""
         log = logging.getLogger(__name__)
-        log.debug("%s del", self.session_name)
+        trace(log, "%s del", self.session_name)
         self.close()
 
 

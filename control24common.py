@@ -70,6 +70,10 @@ def fix_ownership(path):
     if uid is not None:
         os.chown(path, int(uid), int(gid))
 
+def trace(logger, msg, *args, **kwargs):
+    if logger.isEnabledFor(5):
+        logger.log(5,msg)
+
 def start_logging(name, logdir, debug=False):
     """Configure logging for the program
     :rtype:
@@ -90,6 +94,10 @@ def start_logging(name, logdir, debug=False):
     root_logger = logging.getLogger(name)
     # We always want independent loggers
     root_logger.propagate = False
+    # Add a custom level for TRACE
+    logging.addLevelName(5, "TRACE")
+    logging.trace = trace
+    logging.Logger.trace = trace
     if debug:
         root_logger.setLevel(logging.DEBUG)
     else:
@@ -104,6 +112,7 @@ def start_logging(name, logdir, debug=False):
     # Subsequent lines get formatted
     log_formatter = logging.Formatter(logformat)
     log_f.setFormatter(log_formatter)
+
     # for now only the main process will log to the terminal
     if name == '__main__':
         log_s = logging.StreamHandler()
