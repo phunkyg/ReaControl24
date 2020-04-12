@@ -203,7 +203,7 @@ MAPPING_TREE_PROC = {
                                 'Address': 'SoloSafe',
                                 'Zone': 'Utility',
                                 'LED': True
-                      '''      },
+                            }, '''
                             0x15: {
                                 'Address': 'auto_suspend',
                                 'Zone': 'automation_enable',
