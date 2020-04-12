@@ -37,16 +37,16 @@ MAPPING_TREE_PROC = {
     0x90: {
         'Address': 'button',
         'ChildByte': 2,
-        'ChildByteMatch': 0x18,
+        'ChildByteMatch': 0x08,
         'ValueByte': 2,
         'ValueByteMask': 0x40,
         'Children': {
-            0x18: {
+            0x08: {   ## changed from 0x18 since pro control has 24 channels but Pro control only has 8 so command buttons start at 0x08 instead of 0x18
                 'Address': 'command',
                 'ChildByte': 2,
-                'ChildByteMask': 0xBF,
+                'ChildByteMask': 0xBF, ## not sure what childbyte MAsk means does this need to be changes
                 'Children': {
-                    0x18: {
+                    0x08: {
                         'Address': 'utility_misc_meterselect_automationenable',
                         'ChildByte': 1,
                         'Children': {
@@ -121,46 +121,61 @@ MAPPING_TREE_PROC = {
                                 'LED': True
                             },
                             0x09: {
-                                'Address': 'channel_toggle',
-                                'Zone': 'meter_select',
+                                'Address': 'mon_phase',
+                                'Zone': 'Assignment', ##not sure this is correct zone
                                 'LED': True
                             },
                             0x0a: {
-                                'Address': 'input',
-                                'Zone': 'meter_select',
+                                'Address': 'Input',
+                                'Zone': 'Assignment',
                                 'LED': True
                             },
                             0x0b: {
-                                'Address': 'PreFader',
-                                'Zone': 'meter_select',
+                                'Address': 'Output',
+                                'Zone': 'Assignment',
                                 'LED': True
                             },
                             0x0c: {
-                                'Address': 'PostFader',
-                                'Zone': 'meter_select',
+                                'Address': 'Assign',
+                                'Zone': 'Assignment',
                                 'LED': True
                             },
                             0x0d: {
                                 'Address': 'SendMute',
-                                'Zone': 'Misc',
+                                'Zone': 'Sends',
+                                'LED': True
+                            },
+                            0x13: {
+                                'Address': 'Flip',
+                                'Zone': 'Sends',
                                 'LED': True
                             },
                             0x0e: {
-                                'Address': 'ClearPeaks',
-                                'Zone': 'meter_select',
-                                'LED': True
-                            },
-                            0x0f: {
-                                'Address': 'RecSafe',
-                                'Zone': 'Misc',
+                                'Address': 'A/F',
+                                'Zone': 'Sends',
                                 'LED': True
                             },
                             0x10: {
-                                'Address': 'ShowValues',
-                                'SetMode': '/track/procscribstrip/pan',
-                                'Zone': 'Misc',
+                                'Address': 'B/G',
+                                'Zone': 'Sends',
                                 'LED': True
                             },
+                            0x12: {
+                                'Address': 'C/H',
+                                'Zone': 'Sends',
+                                'LED': True
+                            },
+                            0x0f: {
+                                'Address': 'D/I',
+                                'Zone': 'Sends',
+                                'LED': True
+                            },
+                            0x11: {
+                                'Address': 'E/J',
+                                'Zone': 'Sends',
+                                'LED': True
+                            },
+      """      keeping for reference later
                             0x11: {
                                 'Address': 'ShowGroup',
                                 'SetMode': '/track/number',
@@ -178,24 +193,24 @@ MAPPING_TREE_PROC = {
                                 'SetMode': '/track/procscribstrip/volume',
                                 'Zone': 'Misc',
                                 'LED': True
-                            },
+                            }, """
                             0x14: {
                                 'Address': 'SoloClear',
                                 'Zone': 'Utility',
                                 'LED': True
                             },
-                            0x2e: {
+                      '''    not sure this button exists on PRoC  0x2e: {
                                 'Address': 'SoloSafe',
                                 'Zone': 'Utility',
                                 'LED': True
-                            },
+                      '''      },
                             0x15: {
                                 'Address': 'auto_suspend',
                                 'Zone': 'automation_enable',
                                 'LED': True
                             },
                             0x16: {
-                                'Address': 'vel_sens_encoders',
+                                'Address': 'display_mode',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
@@ -203,7 +218,7 @@ MAPPING_TREE_PROC = {
                                 'Address': 'automation_mode_Write',
                                 'Zone': 'Utility',
                                 'LED': True
-                            },
+                            }, /*
                             0x19: {
                                 'Address': 'automation_mode_Touch',
                                 'Zone': 'Utility',
@@ -259,6 +274,7 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'automation_enable',
                                 'LED': True
                             },
+     '''no buttons in this child group higher than 0x26 on PRo control                       
                             0x2f: {
                                 'Address': 'WriteAutoToStart',
                                 'Zone': 'automation_enable'
@@ -270,7 +286,7 @@ MAPPING_TREE_PROC = {
                             0x31: {
                                 'Address': 'WriteAutoToEnd',
                                 'Zone': 'automation_enable'
-                            },
+                            },'''
                             0x23: {
                                 'Address': 'Shift',
                                 'Zone': 'Modifiers',
@@ -291,6 +307,7 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'Modifiers',
                                 'CmdClass': 'C24modifiers'
                             },
+                            ''' no buttons higher than 0x26 in child group 0x08 on proc
                             0x27: {
                                 'Address': 'Auto-Select',
                                 'Zone': 'Misc',
@@ -325,6 +342,96 @@ MAPPING_TREE_PROC = {
                                 'Address': 'PasteSettingToChannel',
                                 'Zone': 'Misc',
                                 'LED': True
+                            } '''
+                        }
+                    },
+## is it possible to use byte mask here to avoid repeating all 8????
+                0x1d: {  
+                        'Address': 'Window+ZoomPresets+Navigation',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {
+                                'Address': 'select_auto',
+                                'Zone': 'DspEditAssign',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': 'assign_enable',
+                                'Zone': 'DspEditAssign',
+                                'LED': True
+                            },
+                            0x02: {
+                                'Address': 'bypass_in_out',
+                                'Zone': 'DspEditAssign',
+                                'LED': True
+                            }
+                         }
+                      },
+                ## insert 0x1d 0x00-02 DspEditAssign1
+                
+                ## insert 0x0e 0x00-02 DspEditAssign2
+                
+                ## insert 0x0f 0x00-02 DspEditAssign3
+                
+                ## insert 0x10 0x00-02 DspEditAssign4
+                
+                ## insert 0x11 0x00-02 DspEditAssign5
+                
+                ## insert 0x12 0x00-02 DspEditAssign6
+                
+                ## insert 0x13 0x00-02 DspEditAssign7
+                
+                ## insert 0x14 0x00-02 DspEditAssign8
+                
+                ## insert 0x15 0x00-0a DspEdit+Groups 
+                
+                ## insert 0x16 0x00-07 ControlRoom here
+                
+                ## insert 0x17 0x00-0x30 ChannelMatrix here
+                
+                    0x18: {
+                        'Address': 'Window+ZoomPresets+Navigation',
+                        'ChildByte': 1,
+                        'Children': {
+                          ''' no nav button on proC?
+                            0x0c: {
+                                'Address': 'Nav',
+                                'Zone': 'Navigation',
+                                'LED': True,
+                                'CmdClass': 'C24nav'
+                            },'''
+                            0x02: {
+                                'Address': 'Zoom', ## zoom/sel
+                                'Zone': 'Navigation',
+                                'LED': True,
+                                'CmdClass': 'C24nav'
+                            },
+                            ''' same button as zoom
+                            0x0e: {
+                                'Address': 'SelAdj',
+                                'Zone': 'Navigation',
+                                'LED': True,
+                                'CmdClass': 'C24nav'
+                            },'''
+                            0x00: {
+                                'Address': 'CursorUp',
+                                'Zone': 'Navigation',
+                                'CmdClass': 'C24nav'
+                            },
+                            0x01: {
+                                'Address': 'CursorLeft',
+                                'Zone': 'Navigation',
+                                'CmdClass': 'C24nav'
+                            },
+                            0x03: {
+                                'Address': 'CursorRight',
+                                'Zone': 'Navigation',
+                                'CmdClass': 'C24nav'
+                            },
+                            0x04: {
+                                'Address': 'CursorDown',
+                                'Zone': 'Navigation',
+                                'CmdClass': 'C24nav'
                             }
                         }
                     },
@@ -332,6 +439,7 @@ MAPPING_TREE_PROC = {
                         'Address': 'Window+ZoomPresets+Navigation',
                         'ChildByte': 1,
                         'Children': {
+                            ''' no presets on proC
                             0x08: {
                                 'Address': 'Preset1',
                                 'Zone': 'ZoomPresets',
@@ -356,7 +464,7 @@ MAPPING_TREE_PROC = {
                                 'Address': 'Preset5',
                                 'Zone': 'ZoomPresets',
                                 'LED': True
-                            },
+                            },'''
                             0x00: {
                                 'Address': 'Mix',
                                 'Zone': 'Window',
@@ -377,71 +485,40 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'Window',
                                 'LED': True
                             },
+                            '''no pan window
                             0x04: {
                                 'Address': 'Pan',
                                 'Zone': 'Window',
                                 'LED': True
-                            },
+                            },'''
+                            ''' no alt here -- move?
                             0x05: {
                                 'Address': 'Alt',
                                 'Zone': 'Window',
                                 'LED': True
-                            },
-                            0x06: {
+                            },'''
+                            0x04: {
                                 'Address': 'PlugIn',
                                 'Zone': 'Window',
                                 'LED': True
                             },
-                            0x07: {
+                            0x05: {
                                 'Address': 'Mem-Loc',
                                 'Zone': 'Window',
                                 'LED': True
                             },
-                            0x0c: {
-                                'Address': 'Nav',
-                                'Zone': 'Navigation',
-                                'LED': True,
-                                'CmdClass': 'C24nav'
-                            },
-                            0x0d: {
-                                'Address': 'Zoom',
-                                'Zone': 'Navigation',
-                                'LED': True,
-                                'CmdClass': 'C24nav'
-                            },
-                            0x0e: {
-                                'Address': 'SelAdj',
-                                'Zone': 'Navigation',
-                                'LED': True,
-                                'CmdClass': 'C24nav'
-                            },
-                            0x0f: {
-                                'Address': 'CursorUp',
-                                'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
-                            },
-                            0x10: {
-                                'Address': 'CursorLeft',
-                                'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
-                            },
-                            0x11: {
-                                'Address': 'CursorRight',
-                                'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
-                            },
-                            0x12: {
-                                'Address': 'CursorDown',
-                                'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
-                            },
+                            ### insert 0x05 undo and 0x07 save here
+                            '''move to 0x15 0x00
                             0x13: {  # oddly placed, clock mode
                                 'Address': 'CounterMode',
                                 'Zone': 'Counter',
                                 'CmdClass': 'C24clock'
-                            }
+                            }'''
                         }
                     },
+
+                
+                
                     0x1A: {
                         'ChildByte': 1,
                         'Children': {
@@ -790,6 +867,7 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'Assignment',
                                 'LED': True
                             },
+                            ''' moved to 0x08
                             0x06: {
                                 'Address': 'Output',
                                 'Zone': 'Assignment',
@@ -834,7 +912,7 @@ MAPPING_TREE_PROC = {
                                 'Address': 'E/J',
                                 'Zone': 'Sends',
                                 'LED': True
-                            },
+                            }, '''
                             0x10: {
                                 'Address': 'LCR/Front Div',
                                 'Zone': 'Pans',
@@ -891,7 +969,7 @@ MAPPING_TREE_PROC = {
                         'LED': True
                     },
                     0x04: {
-                        'Address': 'Switch_Active',
+                        'Address': 'pre_post_assign_mute', ## changed
                         'Zone': 'Channel',
                         'LED': True
                     },
@@ -918,7 +996,7 @@ MAPPING_TREE_PROC = {
                     0x05: {
                         'Address': 'c24automode',
                         'Zone': 'Channel',
-                        'CmdClass': 'C24automode'
+                        'CmdClass': 'C24automode' ## this button has 5 leds (WR,TC,LT,TM,RD)
                     },
                     0x06: {
                         'Address': 'ChannelSelect',
@@ -994,6 +1072,7 @@ MAPPING_TREE_PROC = {
                     0xF5: {'Address': 'Off'}
                 }
             },
+            
             0xFF: {
                 'Address': 'CounterModeLED',
                 'ChildByte': 2,
