@@ -37,7 +37,7 @@ MAPPING_TREE_PROC = {
     0x90: {
         'Address': 'button',
         'ChildByte': 2,
-        'ChildByteMatch': 0x08,
+        'ChildByteMatch': 0x08, ##changed From 0x18 for Procontrol(8 ch)
         'ValueByte': 2,
         'ValueByteMask': 0x40,
         'Children': {
@@ -175,35 +175,11 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'Sends',
                                 'LED': True
                             },
-      """      keeping for reference later
-                            0x11: {
-                                'Address': 'ShowGroup',
-                                'SetMode': '/track/number',
-                                'Zone': 'Misc',
-                                'LED': True
-                            },
-                            0x12: {
-                                'Address': 'ShowChannelNames',
-                                'SetMode': '/track/procscribstrip/name',
-                                'Zone': 'Misc',
-                                'LED': True
-                            },
-                            0x13: {
-                                'Address': 'ShowInfo',
-                                'SetMode': '/track/procscribstrip/volume',
-                                'Zone': 'Misc',
-                                'LED': True
-                            }, """
                             0x14: {
                                 'Address': 'SoloClear',
                                 'Zone': 'Utility',
                                 'LED': True
                             },
-                      '''    not sure this button exists on PRoC  0x2e: {
-                                'Address': 'SoloSafe',
-                                'Zone': 'Utility',
-                                'LED': True
-                            }, '''
                             0x15: {
                                 'Address': 'auto_suspend',
                                 'Zone': 'automation_enable',
@@ -218,7 +194,7 @@ MAPPING_TREE_PROC = {
                                 'Address': 'automation_mode_Write',
                                 'Zone': 'Utility',
                                 'LED': True
-                            }, /*
+                            },
                             0x19: {
                                 'Address': 'automation_mode_Touch',
                                 'Zone': 'Utility',
@@ -274,19 +250,6 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'automation_enable',
                                 'LED': True
                             },
-     '''no buttons in this child group higher than 0x26 on PRo control                       
-                            0x2f: {
-                                'Address': 'WriteAutoToStart',
-                                'Zone': 'automation_enable'
-                            },
-                            0x30: {
-                                'Address': 'WriteAutoToAll',
-                                'Zone': 'automation_enable'
-                            },
-                            0x31: {
-                                'Address': 'WriteAutoToEnd',
-                                'Zone': 'automation_enable'
-                            },'''
                             0x23: {
                                 'Address': 'Shift',
                                 'Zone': 'Modifiers',
@@ -307,164 +270,536 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'Modifiers',
                                 'CmdClass': 'C24modifiers'
                             },
-                            ''' no buttons higher than 0x26 in child group 0x08 on proc
-                            0x27: {
-                                'Address': 'Auto-Select',
-                                'Zone': 'Misc',
-                                'LED': True
-                            },
-                            0x28: {
-                                'Address': 'Pre-Post',
-                                'Zone': 'Misc',
-                                'LED': True
-                            },
-                            0x29: {
-                                'Address': 'ApplyToAllChannels',
-                                'Zone': 'Misc',
-                                'LED': True
-                            },
-                            0x2a: {
-                                'Address': 'ApplyToAllSelectedChannels',
-                                'Zone': 'Misc',
-                                'LED': True
-                            },
-                            0x2b: {
-                                'Address': 'CopySettingsFromChannel',
-                                'Zone': 'Misc',
-                                'LED': True
-                            },
-                            0x2c: {
-                                'Address': 'SpecifySettings',
-                                'Zone': 'Misc',
-                                'LED': True
-                            },
-                            0x2d: {
-                                'Address': 'PasteSettingToChannel',
-                                'Zone': 'Misc',
-                                'LED': True
-                            } '''
                         }
                     },
-## is it possible to use byte mask here to avoid repeating all 8????
-                0x1d: {  
-                        'Address': 'Window+ZoomPresets+Navigation',
+## is it possible to use byte mask here to avoid repeating all 8 DSP EDIT Zones????
+                0x0d: {  
+                        'Address': 'DSPEdit1',
                         'ChildByte': 1,
                         'Children': {
                             0x00: {
                                 'Address': 'select_auto',
-                                'Zone': 'DspEditAssign',
+                                'Zone': 'DspEditAssign1',
                                 'LED': True
                             },
                             0x01: {
                                 'Address': 'assign_enable',
-                                'Zone': 'DspEditAssign',
+                                'Zone': 'DspEditAssign1',
                                 'LED': True
                             },
                             0x02: {
                                 'Address': 'bypass_in_out',
-                                'Zone': 'DspEditAssign',
+                                'Zone': 'DspEditAssign1',
                                 'LED': True
                             }
                          }
                       },
-                ## insert 0x1d 0x00-02 DspEditAssign1
-                
-                ## insert 0x0e 0x00-02 DspEditAssign2
-                
-                ## insert 0x0f 0x00-02 DspEditAssign3
-                
-                ## insert 0x10 0x00-02 DspEditAssign4
-                
-                ## insert 0x11 0x00-02 DspEditAssign5
-                
-                ## insert 0x12 0x00-02 DspEditAssign6
-                
-                ## insert 0x13 0x00-02 DspEditAssign7
-                
-                ## insert 0x14 0x00-02 DspEditAssign8
-                
-                ## insert 0x15 0x00-0a DspEdit+Groups 
-                
-                ## insert 0x16 0x00-07 ControlRoom here
-                
-                ## insert 0x17 0x00-0x30 ChannelMatrix here
-                
-                    0x18: {
-                        'Address': 'Window+ZoomPresets+Navigation',
+                0x0e: {  
+                        'Address': 'DSPEDit2',
                         'ChildByte': 1,
                         'Children': {
-                          ''' no nav button on proC?
-                            0x0c: {
-                                'Address': 'Nav',
-                                'Zone': 'Navigation',
-                                'LED': True,
-                                'CmdClass': 'C24nav'
-                            },'''
-                            0x02: {
-                                'Address': 'Zoom', ## zoom/sel
-                                'Zone': 'Navigation',
-                                'LED': True,
-                                'CmdClass': 'C24nav'
-                            },
-                            ''' same button as zoom
-                            0x0e: {
-                                'Address': 'SelAdj',
-                                'Zone': 'Navigation',
-                                'LED': True,
-                                'CmdClass': 'C24nav'
-                            },'''
                             0x00: {
-                                'Address': 'CursorUp',
-                                'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'Address': 'select_auto',
+                                'Zone': 'DspEditAssign2',
+                                'LED': True
                             },
                             0x01: {
-                                'Address': 'CursorLeft',
-                                'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'Address': 'assign_enable',
+                                'Zone': 'DspEditAssign2',
+                                'LED': True
                             },
+                            0x02: {
+                                'Address': 'bypass_in_out',
+                                'Zone': 'DspEditAssign2',
+                                'LED': True
+                            }
+                         }
+                      },
+                0x0f: {  
+                        'Address': 'DSPEdit3',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {
+                                'Address': 'select_auto',
+                                'Zone': 'DspEditAssign3',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': 'assign_enable',
+                                'Zone': 'DspEditAssign3',
+                                'LED': True
+                            },
+                            0x02: {
+                                'Address': 'bypass_in_out',
+                                'Zone': 'DspEditAssign3',
+                                'LED': True
+                            }
+                         }
+                      },
+                0x10: {  
+                        'Address': 'DSPEdit4',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {
+                                'Address': 'select_auto',
+                                'Zone': 'DspEditAssign4',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': 'assign_enable',
+                                'Zone': 'DspEditAssign4',
+                                'LED': True
+                            },
+                            0x02: {
+                                'Address': 'bypass_in_out',
+                                'Zone': 'DspEditAssign4',
+                                'LED': True
+                            }
+                         }
+                      },
+                0x11: {  
+                        'Address': 'DSPEdit5',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {
+                                'Address': 'select_auto',
+                                'Zone': 'DspEditAssign5',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': 'assign_enable',
+                                'Zone': 'DspEditAssign5',
+                                'LED': True
+                            },
+                            0x02: {
+                                'Address': 'bypass_in_out',
+                                'Zone': 'DspEditAssign5',
+                                'LED': True
+                            }
+                         }
+                      },
+                0x12: {  
+                        'Address': 'DSPEdit6',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {
+                                'Address': 'select_auto',
+                                'Zone': 'DspEditAssign6',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': 'assign_enable',
+                                'Zone': 'DspEditAssign6',
+                                'LED': True
+                            },
+                            0x02: {
+                                'Address': 'bypass_in_out',
+                                'Zone': 'DspEditAssign6',
+                                'LED': True
+                            }
+                         }
+                      },
+                0x13: {  
+                        'Address': 'DSPEdit7',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {
+                                'Address': 'select_auto',
+                                'Zone': 'DspEditAssign7',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': 'assign_enable',
+                                'Zone': 'DspEditAssign7',
+                                'LED': True
+                            },
+                            0x02: {
+                                'Address': 'bypass_in_out',
+                                'Zone': 'DspEditAssign7',
+                                'LED': True
+                            }
+                         }
+                      },
+                0x14: {  
+                        'Address': 'DSPEdit8',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {
+                                'Address': 'select_auto',
+                                'Zone': 'DspEditAssign8',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': 'assign_enable',
+                                'Zone': 'DspEditAssign8',
+                                'LED': True
+                            },
+                            0x02: {
+                                'Address': 'bypass_in_out',
+                                'Zone': 'DspEditAssign8',
+                                'LED': True
+                            }
+                         }
+                      },
+                    0x15: {
+                        'Address': 'DSPEdit+Groups',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {  # oddly placed, clock mode
+                                'Address': 'CounterMode',
+                                'Zone': 'Counter',
+                                'CmdClass': 'C24clock'
+                            },
+                            0x01: {
+                                'Address': 'Info',
+                                'Zone': 'DSPEdit',
+                                'LED': True
+                             },
+                            0x02: {
+                                'Address': 'Inserts_Param',
+                                'Zone': 'DSPEdit',
+                                'LED': True
+                              },
                             0x03: {
-                                'Address': 'CursorRight',
-                                'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
-                            },
+                                'Address': 'Sends',
+                                'Zone': 'DSPEdit',
+                                'LED': True
+                             },
                             0x04: {
-                                'Address': 'CursorDown',
-                                'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'Address': 'Create',
+                                'Zone': 'Groups',
+                                'LED': True
+                            },
+                            0x05: {
+                                'Address': 'Enable',
+                                'Zone': 'Groups',
+                                'LED': True
+                             },
+                            0x06: {
+                                'Address': 'Edit/Bypass',
+                                'Zone': 'Groups',
+                                'LED': True
+                              },
+                            0x07: {
+                                'Address': 'Select',
+                                'Zone': 'Groups',
+                                'LED': True
+                             },
+                            0x08: {
+                                'Address': 'Suspend',
+                                'Zone': 'Groups',
+                                'LED': True
+                            },
+                            0x09: {
+                                'Address': 'Compare',
+                                'Zone': 'Groups',
+                                'LED': True
+                             },
+                            0x0a: {
+                                'Address': 'MasterBypass',
+                                'Zone': 'DSPEdit',
+                                'LED': True
                             }
                         }
                     },
+                    0x16: {
+                        'Address': 'ControlRoom',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {  # oddly placed, clock mode
+                                'Address': 'MixToAux',
+                                'Zone': 'ControlRoom',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': 'StereoMix',
+                                'Zone': 'ControlRoom',
+                                'LED': True
+                             },
+                            0x02: {
+                                'Address': 'SRC1_3-4',
+                                'Zone': 'ControlRoom',
+                                'LED': True
+                              },
+                            0x03: {
+                                'Address': 'SRC2_5-6',
+                                'Zone': 'ControlRoom',
+                                'LED': True
+                             },
+                            0x04: {
+                                'Address': 'SRC3',
+                                'Zone': 'ControlRoom',
+                                'LED': True
+                            },
+                            0x05: {
+                                'Address': 'Mono',
+                                'Zone': 'ControlRoom',
+                                'LED': True
+                             },
+                            0x06: {
+                                'Address': 'Dim',
+                                'Zone': 'ControlRoom',
+                                'LED': True
+                              },
+                            0x07: {
+                                'Address': 'Mute',
+                                'Zone': 'ControlRoom',
+                                'LED': True
+                            }
+                        }
+                    },
+                    0x17: {
+                        'Address': 'CannelMatrix',
+                        'ChildByte': 1,
+                        'Children': {
+                            0x00: {
+                                'Address': 'GoTo',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x01: {
+                                'Address': '1_A',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x02: {
+                                'Address': '2_B',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x03: {
+                                'Address': '3_C',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x04: {
+                                'Address': '4_D',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x05: {
+                                'Address': '5_E',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x06: {
+                                'Address': '6_F',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x07: {
+                                'Address': '7_G',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x08: {
+                                'Address': '8_H',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x09: {
+                                'Address': '9_I',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x0a: {
+                                'Address': '10_J',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x0b: {
+                                'Address': '11_K',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x0c: {
+                                'Address': '12_L',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x0d: {
+                                'Address': '13_M',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x0e: {
+                                'Address': '14_N',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x0f: {
+                                'Address': '15_O',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x10: {
+                                'Address': '16_P',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x11: {
+                                'Address': '17_Q',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x12: {
+                                'Address': '18_R',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x13: {
+                                'Address': '19_S',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x14: {
+                                'Address': '20_T',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x15: {
+                                'Address': '21_U',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x16: {
+                                'Address': '22_V',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x17: {
+                                'Address': '23_W',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x18: {
+                                'Address': '24_X',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x19: {
+                                'Address': '25_Y',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x1a: {
+                                'Address': '26_Z',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x1b: {
+                                'Address': '27_Shift',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x1c: {
+                                'Address': '28_CapLock',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x1d: {
+                                'Address': '29_#',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x1e: {
+                                'Address': '30_&',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x1f: {
+                                'Address': '31_Delete',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x20: {
+                                'Address': '32_Space',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x21: {
+                                'Address': 'Alpha',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            ## 0x22 missing (no button)
+                            0x23: { ## out of Group (utility???)
+                                'Address': 'MasterFaders',
+                                'Zone': 'Faders',
+                                'LED': True
+                            },
+                            0x24: {
+                                'Address': 'Select',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x25: {
+                                'Address': 'Mute',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x26: {
+                                'Address': 'Solo',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x27: {
+                                'Address': 'RecReady',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x28: {
+                                'Address': 'Snapshot',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x29: {
+                                'Address': 'ClearAll',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x2a: {
+                                'Address': 'Parameter_Pages',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x2b: {
+                                'Address': 'View',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x2c: {
+                                'Address': 'BankA_1-32',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x2d: {
+                                'Address': 'BankB_32-64',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                            },
+                            0x2e: {
+                                'Address': 'BankC_65-96',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                             },
+                            0x2f: {
+                                'Address': 'BankD_97-128',
+                                'Zone': 'CannelMatrix',
+                                'LED': True
+                              },
+                            0x30: { ## More of a Utility Key for exiting on screen dialogs
+                                'Address': 'Esc/Cancel',
+                                'Zone': 'Utility',
+                                'LED': True
+                            }
+                        }
+                    },
+
                     0x19: {
                         'Address': 'Window+ZoomPresets+Navigation',
                         'ChildByte': 1,
                         'Children': {
-                            ''' no presets on proC
-                            0x08: {
-                                'Address': 'Preset1',
-                                'Zone': 'ZoomPresets',
-                                'LED': True
-                            },
-                            0x09: {
-                                'Address': 'Preset2',
-                                'Zone': 'ZoomPresets',
-                                'LED': True
-                            },
-                            0x0A: {
-                                'Address': 'Preset3',
-                                'Zone': 'ZoomPresets',
-                                'LED': True
-                            },
-                            0x0B: {
-                                'Address': 'Preset4',
-                                'Zone': 'ZoomPresets',
-                                'LED': True
-                            },
-                            0x14: {
-                                'Address': 'Preset5',
-                                'Zone': 'ZoomPresets',
-                                'LED': True
-                            },'''
                             0x00: {
                                 'Address': 'Mix',
                                 'Zone': 'Window',
@@ -485,18 +820,6 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'Window',
                                 'LED': True
                             },
-                            '''no pan window
-                            0x04: {
-                                'Address': 'Pan',
-                                'Zone': 'Window',
-                                'LED': True
-                            },'''
-                            ''' no alt here -- move?
-                            0x05: {
-                                'Address': 'Alt',
-                                'Zone': 'Window',
-                                'LED': True
-                            },'''
                             0x04: {
                                 'Address': 'PlugIn',
                                 'Zone': 'Window',
@@ -507,13 +830,16 @@ MAPPING_TREE_PROC = {
                                 'Zone': 'Window',
                                 'LED': True
                             },
-                            ### insert 0x05 undo and 0x07 save here
-                            '''move to 0x15 0x00
-                            0x13: {  # oddly placed, clock mode
-                                'Address': 'CounterMode',
-                                'Zone': 'Counter',
-                                'CmdClass': 'C24clock'
-                            }'''
+                            0x06: {
+                                'Address': 'Undo',
+                                'Zone': 'Utility',
+                                'LED': True
+                            },
+                            0x07: {
+                                'Address': 'Save',
+                                'Zone': 'Utility',
+                                'LED': True
+                            }
                         }
                     },
 
@@ -626,14 +952,6 @@ MAPPING_TREE_PROC = {
                                 'Address': 'Capture',
                                 'Zone': 'Edit Function'
                             },
-                            0x1c: {
-                                'Address': 'Duplicate',
-                                'Zone': 'Edit Function'
-                            },
-                            0x1d: {
-                                'Address': 'Repeat',
-                                'Zone': 'Edit Function'
-                            },
                             0x0a: {
                                 'Address': 'Left',
                                 'Zone': 'Bank'
@@ -666,76 +984,6 @@ MAPPING_TREE_PROC = {
                                 'Address': 'Pencil',
                                 'Zone': 'Edit Tools',
                                 'LED': True
-                            },
-                            0x11: {
-                                'Address': 'MIDI Tools',
-                                'Zone': 'Edit Tools',
-                                'LED': True
-                            },
-                            0x12: {
-                                'Address': 'Smart',
-                                'Zone': 'Edit Tools',
-                                'LED': True
-                            },
-                            0x1e: {
-                                'Address': 'Link Edit/TL',
-                                'Zone': 'Edit Tools',
-                                'LED': True
-                            },
-                            0x13: {
-                                'Address': 'Master Faders',
-                                'Zone': 'Faders',
-                                'LED': True
-                            },
-                            0x1f: {
-                                'Address': 'Auto To Cur',
-                                'Zone': 'Edit Tools',
-                                'LED': True
-                            },
-                            0x20: {
-                                'Address': 'Auto To All',
-                                'Zone': 'Edit Tools',
-                                'LED': True
-                            },
-                            0x14: {
-                                'Address': 'Undo',
-                                'Zone': 'Utility',
-                                'LED': True
-                            },
-                            0x15: {
-                                'Address': 'Save',
-                                'Zone': 'Utility',
-                                'LED': True
-                            },
-                            0x21: {
-                                'Address': 'Esc/Cancel',
-                                'Zone': 'Utility',
-                                'LED': True
-                            },
-                            0x17: {
-                                'Address': 'Create',
-                                'Zone': 'Groups',
-                                'LED': True
-                            },
-                            0x18: {
-                                'Address': 'Enable',
-                                'Zone': 'Groups',
-                                'LED': True
-                            },
-                            0x19: {
-                                'Address': 'Edit / Bypass',
-                                'Zone': 'Groups',
-                                'LED': True
-                            },
-                            0x1a: {
-                                'Address': 'Delete',
-                                'Zone': 'Groups',
-                                'LED': True
-                            },
-                            0x1b: {
-                                'Address': 'Suspend',
-                                'Zone': 'Groups',
-                                'LED': True
                             }
                         }
                     },
@@ -764,15 +1012,15 @@ MAPPING_TREE_PROC = {
                                 'LED': True
                             },
                             0x05: {
-                                'Address': 'Go To Start',
+                                'Address': 'Online',
                                 'LED': True
                             },
                             0x06: {
-                                'Address': 'Go To End',
+                                'Address': 'Go To Start',
                                 'LED': True
                             },
                             0x07: {
-                                'Address': 'Online',
+                                'Address': 'Go To End',
                                 'LED': True
                             },
                             0x08: {
@@ -782,7 +1030,6 @@ MAPPING_TREE_PROC = {
                             0x09: {
                                 'Address': 'LoopPlay',
                                 'LED': True
-
                             },
                             0x0a: {
                                 'Address': 'Loop Record',
@@ -827,133 +1074,7 @@ MAPPING_TREE_PROC = {
                                 'CmdClass': 'C24jpot'
                             }
                         }
-                    },
-                    0x1D: {
-                        'Address': 'Monitor+Pre+Inserts+Assignment+Sends+Pans+Scroll',
-                        'ChildByte': 1,
-                        'Children': {
-                            0x00: {
-                                'Address': 'Monitor Phase',
-                                'Zone': 'Monitor Phase & Remote Pre',
-                                'LED': True
-                            },
-                            0x01: {
-                                'Address': 'Remote Mic Pre',
-                                'Zone': 'Monitor Phase & Remote Pre',
-                                'LED': True
-                            },
-                            0x02: {
-                                'Address': 'Compare',
-                                'Zone': 'Inserts',
-                                'LED': True
-                            },
-                            0x03: {
-                                'Address': 'Master Bypass',
-                                'Zone': 'Inserts',
-                                'LED': True
-                            },
-                            0x04: {
-                                'Address': 'Inserts/Param',
-                                'Zone': 'Inserts',
-                                'LED': True
-                            },
-                            0x09: {
-                                'Address': 'Plug-In Safe',
-                                'Zone': 'Inserts',
-                                'LED': True
-                            },
-                            0x05: {
-                                'Address': 'Input',
-                                'Zone': 'Assignment',
-                                'LED': True
-                            },
-                            ''' moved to 0x08
-                            0x06: {
-                                'Address': 'Output',
-                                'Zone': 'Assignment',
-                                'LED': True
-                            },
-                            0x07: {
-                                'Address': 'Assign',
-                                'Zone': 'Assignment',
-                                'LED': True
-                            },
-                            0x08: {
-                                'Address': 'Esc/Cancel',
-                                'Zone': 'Assignment',
-                                'LED': True
-                            },
-                            0x0a: {
-                                'Address': 'Flip',
-                                'Zone': 'Sends',
-                                'LED': True
-                            },
-                            0x0b: {
-                                'Address': 'A/F',
-                                'Zone': 'Sends',
-                                'LED': True
-                            },
-                            0x0c: {
-                                'Address': 'B/G',
-                                'Zone': 'Sends',
-                                'LED': True
-                            },
-                            0x0d: {
-                                'Address': 'C/H',
-                                'Zone': 'Sends',
-                                'LED': True
-                            },
-                            0x0e: {
-                                'Address': 'D/I',
-                                'Zone': 'Sends',
-                                'LED': True
-                            },
-                            0x0f: {
-                                'Address': 'E/J',
-                                'Zone': 'Sends',
-                                'LED': True
-                            }, '''
-                            0x10: {
-                                'Address': 'LCR/Front Div',
-                                'Zone': 'Pans',
-                                'LED': True
-                            },
-                            0x11: {
-                                'Address': 'Rear/Rear Div',
-                                'Zone': 'Pans',
-                                'LED': True
-                            },
-                            0x12: {
-                                'Address': 'FR/FR Div',
-                                'Zone': 'Pans',
-                                'LED': True
-                            },
-                            0x13: {
-                                'Address': 'Cent%',
-                                'Zone': 'Pans',
-                                'LED': True
-                            },
-                            0x16: {
-                                'Address': 'LFE',
-                                'Zone': 'Pans',
-                                'LED': True
-                            },
-                            0x17: {
-                                'Address': 'Left/Right',
-                                'Zone': 'Pans',
-                                'LED': True
-                            },
-                            0x14: {
-                                'Address': '<',
-                                'Zone': 'Channel Bar Scroll',
-                                'LED': True
-                            },
-                            0x15: {
-                                'Address': '>',
-                                'Zone': 'Channel Bar Scroll',
-                                'LED': True
-                            }
-                        }
+                    
                     }
                 }
             },  # END Command Buttons
