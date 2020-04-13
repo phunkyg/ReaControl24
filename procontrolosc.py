@@ -361,7 +361,7 @@ class C24clock(C24base):
     """Class to hold and convert clock display value representations"""
 
     # 8 segments
-    # Displays seems to all be 0xf0, 0x13, 0x01
+    # Displays seems to all be 0xf0, 0x13, 0x01 -- 0xf0, 0x13, 0x00 fro pro control
     # 0xf0, 0x13, 0x01 = Displays
     # 0x30, 0x19       = Clock display
     # 0xFF             = DOT byte
@@ -405,9 +405,9 @@ class C24clock(C24base):
         'A': 0x77
     }
 
-    clockbytes = [0xf0, 0x13, 0x01, 0x30, 0x19, 0x00, 0x01,
+    clockbytes = [0xf0, 0x13, 0x00, 0x30, 0x09, 0x00, 0x01, ## changed 0x19 to 0x09 pro Control
                   0x46, 0x4f, 0x67, 0x77, 0x4f, 0x46, 0x01, 0xf7]
-    ledbytes = [0xF0, 0x13, 0x01, 0x20, 0x19, 0x00, 0xF7]
+    ledbytes = [0xF0, 0x13, 0x00, 0x20, 0x09, 0x00, 0xF7] ## changed 0x19 to 0x09 for pro Control 
 
     clockmodes = {
         'time': {
@@ -522,7 +522,7 @@ class C24clock(C24base):
 class C24vumeter(C24base):
     """Class to hold and convert VU meter value representations"""
 
-    # 0xf0, 0x13, 0x01 = display
+    # 0xf0, 0x13, 0x01 = display 0xf0, 0x13, 0x01 for pro control
     # 0x10 - VUs
     # 0-23 Left
     # 32-  Right
@@ -555,7 +555,7 @@ class C24vumeter(C24base):
         self.mode = 'postfader'
         self.cmdbytes = (c_ubyte * 8)()
 
-        for ind, byt in enumerate([0xf0, 0x13, 0x01, 0x10, track.track_number, 0x7f, 0x7f, 0xf7]):
+        for ind, byt in enumerate([0xf0, 0x13, 0x00, 0x10, track.track_number, 0x7f, 0x7f, 0xf7]): ## changed to 0x01 to 0x00 for pro control
             self.cmdbytes[ind] = byt
 
     def __str__(self):
@@ -590,7 +590,7 @@ class C24vumeter(C24base):
 class ProCscribstrip(C24base):
     """Class to hold and convert scribblestrip value representations"""
 
-    # 0xf0, 0x13, 0x01 = Displays
+    # 0xf0, 0x13, 0x01 = Displays 0xf0, 0x13, 0x00 for pro control
     # 0x40, 0x17       = Scribble strip
     # 0x00             = track/strip
     # 0x00, 0x00, 0x00, 0x00 = 4 'ascii' chars to display
@@ -817,7 +817,7 @@ class C24vpot(C24base):
         self.cmdbytes_d_c = (c_ubyte * 30)()
         self.cmdbytes = (c_ubyte * 8)()
         for ind, byt in enumerate(
-                [0xF0, 0x13, 0x01, 0x00, self.track.track_number & 0x3f,
+                [0xF0, 0x13, 0x00, 0x00, self.track.track_number & 0x3f, ## changed 0x01 to 0x00 fpr Pro control
                  0x00, 0x00, 0xF7]):
             self.cmdbytes[ind] = byt
             self.cmdbytes_d_c[ind] = byt
@@ -1054,7 +1054,7 @@ class C24automode(C24base):
         self.track = track
         self.cmdbytes = (c_ubyte * 30)()
         for ind, byt in enumerate(
-                [0xF0, 0x13, 0x01, 0x20, self.track.track_number & 0x1F,
+                [0xF0, 0x13, 0x00, 0x20, self.track.track_number & 0x1F, ## changed from 0x01 to 0x00 for pro control
                  0x00, 0xF7]):
             self.cmdbytes[ind] = byt
         self.modes = dict(self.automodes)
