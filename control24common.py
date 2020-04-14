@@ -38,7 +38,7 @@ DEFAULTS = {
     'control24osc':9124,
     'oscDaw':9125,
     'auth':'be_in-control',
-    'loglevel':logging.INFO,
+    'loglevel':"TRACE",
     'interface':'en0',
     'logdir':'./logs',
     'logformat':'%(asctime)s\t%(name)s\t%(levelname)s\t' +
@@ -98,7 +98,8 @@ def start_logging(name, logdir, debug=False):
     logging.addLevelName(5, "TRACE")
     logging.trace = trace
     logging.Logger.trace = trace
-    if debug:
+    isTrace = DEFAULTS.get('loglevel') == "TRACE"
+    if debug and not isTrace:
         root_logger.setLevel(logging.DEBUG)
     else:
         root_logger.setLevel(DEFAULTS.get('loglevel'))

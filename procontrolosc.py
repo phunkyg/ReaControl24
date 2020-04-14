@@ -1282,7 +1282,7 @@ class ProCoscsession(object):
 
     def _daw_to_desk(self, addr, tags, stuff, source):
         """message handler for the OSC listener"""
-
+        trace(self.log,'received from DAW: %s', addr)
         if self.osc_listener_last is None:
             self.osc_listener_last = source
         self.log.debug("OSC Listener received Message: %s %s [%s] %s",
