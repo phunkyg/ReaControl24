@@ -1460,6 +1460,7 @@ class ProCoscsession(object):
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
         self.log = start_logging("procontrolosc", opts.logdir, opts.debug)
+        trace(self.log, 'Options %s', str(opts))
         self.desk = ProCdesk(self)
         try:
             self.standalone = pipe is None

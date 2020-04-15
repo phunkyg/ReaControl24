@@ -436,6 +436,7 @@ class NetworkHandler(object):
         """Constructor to build the network handler object"""
         log = start_logging(__name__, opts.logdir, opts.debug)
         log.info('Network Handler Started')
+        trace(log, 'Options %s', str(opts))
         #--MULTI add a Sessions dict
         self.sessions = {}
         self.num_sessions = 0
