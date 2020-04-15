@@ -72,7 +72,7 @@ def fix_ownership(path):
 
 def trace(logger, msg, *args, **kwargs):
     if logger.isEnabledFor(5):
-        logger.log(5,msg)
+        logger.log(5,msg, *args, **kwargs)
 
 def start_logging(name, logdir, debug=False):
     """Configure logging for the program
