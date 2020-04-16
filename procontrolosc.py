@@ -1282,11 +1282,14 @@ class ProCoscsession(object):
 
     def _daw_to_desk(self, addr, tags, stuff, source):
         """message handler for the OSC listener"""
-        trace(self.log,'received from DAW: %s', addr)
-        if self.osc_listener_last is None:
-            self.osc_listener_last = source
+        trace(self.log, "Received OSC message")
         self.log.debug("OSC Listener received Message: %s %s [%s] %s",
                        source, addr, tags, str(stuff))
+        if self.osc_listener_last is None:
+            self.osc_listener_last = source
+        elif self.osc_listener_last != source:
+            self.log.warn('OSC message received from an unexpected source address %s', source)
+
         # TODO primitive switching needs a proper lookup map
         addrlist = addr.split('/')
         if 'track' in addrlist:
@@ -1396,7 +1399,7 @@ class ProCoscsession(object):
             self.osc_client = OSC.OSCClient()
             while self.osc_listener is None or self.osc_listener_last is None or not self.osc_listener.running:
                 self.log.debug(
-                    'Waiting for the OSC listener to get a client %s', self.osc_listener_last)
+                    'Waiting for the OSC listener to get a client. Last seen was: %s', self.osc_listener_last)
                 time.sleep(TIMING_WAIT_OSC_LISTENER)
             try:
                 self.log.debug('Starting OSC Client connecting to %s',

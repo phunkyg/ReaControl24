@@ -225,7 +225,9 @@ For an entry in the control24map.py, you can use the attribute 'CmdClass' to ide
 
 Other attributes determine how the tree is 'walked' according to the binary received from the desk. Byte numbers are zero origin, the first denotes the actual command:
     ChildByte       which byte to look up to find the next child
-    ChildByteMask   apply this 8 bit mask before lookup
+    ChildByteMask   apply this 8 bit mask before lookup. It must then be equal (same bits set)
+    ChildByteMatch  the byte has to have the same bits set as the match byte. It can have more bits set but not fewer 
+    (You can either Mask or Match but not both!)
     TrackByte       which byte to identify the channel strip/track number
     TrackByteMask   apply this mask before determining track
     ValueByte       which byte to identify a simple value

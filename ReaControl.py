@@ -800,6 +800,8 @@ def main():
             )
     if not networks.verify_ip(opts.listen.split(':')[0]):
         raise OptionError('No network has the IP address specified.', 'listen')
+    if not networks.is_valid_ipstr(opts.connect):
+        raise OptionError('Not a valid ipv4 address and port ', 'connect')
 
     #--MULTI - need a session independent netowrk listener/dispatcher thread here!
     if NETHANDLER is None:

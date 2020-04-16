@@ -8,6 +8,7 @@ import os
 import time
 import sys
 import signal
+import re
 
 import netifaces
 
@@ -269,5 +270,11 @@ class NetworkHelper(object):
     def ipstr_from_tuple(ipaddr, ipport):
         """from ip and port provide a string with ip:port"""
         return '{}:{}'.format(ipaddr, ipport)
+
+    @staticmethod
+    def is_valid_ipstr(ipstr):
+        """check if a string conforms to the expected ipv4 and port format"""
+        pat = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):[0-9]+$"
+        return bool(re.findall(pat, ipstr))
 
 
