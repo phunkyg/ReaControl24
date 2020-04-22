@@ -538,21 +538,21 @@ class DeviceSession(object):
                     self.sendlock.clear()
                     self.backoff = threading.Timer(TIMING_BACKOFF, self._backoff)
                     self.backoff.start()
-                if packet.struc.c24header.numcommands > 0:
-                    cmdnumber = packet.struc.c24header.sendcounter
-                    trace(log, '%s RECEIVED %d', self.session_name, cmdnumber)
-                    # this counter changes to the value the DESK sends to us so we can ACK it
-                    self.cmdcounter = cmdnumber
-                    # forward it to the client
-                    self.client_conn.send_bytes(packet.struc.packetdata)
-                    trace(log, '%s ACK TO DEVICE: %d', self.session_name, self.cmdcounter)
-                    time.sleep(TIMING_BEFORE_ACKT)
-                    self.send_packet(self._prepare_ackt())
-                    if not self.backoff.is_alive():
-                        self.sendlock.set()
-                else:
-                    log.warn('%s Unhandled data from device :%02x', self.session_name, packet.struc.packetdata[0])
-                    trace(log, '%s     unhandled: %s', self.session_name, hexl(packet.raw))
+                # It is a genuine packet of commands so go ahead and process it
+                cmdnumber = packet.struc.c24header.sendcounter
+                trace(log, '%s RECEIVED %d', self.session_name, cmdnumber)
+                # this counter changes to the value the DESK sends to us so we can ACK it
+                self.cmdcounter = cmdnumber
+                # forward it to the client
+                self.parent_conn.send_bytes(packet.struc.packetdata)
+                trace(log, '%s ACK TO DEVICE: %d', self.session_name, self.cmdcounter)
+                time.sleep(TIMING_BEFORE_ACKT)
+                self.send_packet(self._prepare_ackt())
+                if not self.backoff.is_alive():
+                    self.sendlock.set()
+            else:  # It is not an ack and no number of commands on it, something we haven't seen before?
+                log.warn('%s Unhandled data from device :%02x', self.session_name, packet.struc.packetdata[0])
+                trace(log, '%s     unhandled: %s', self.session_name, hexl(packet.raw))
 
     def receive_handler(self, buff, ncmds, buffsz):
         """Receive Handler. TODO a better description"""
@@ -636,7 +636,7 @@ class DeviceSession(object):
             self.close()
 
         if self.is_supported_device:
-            self.client_process = Process(target = target, args = self.client_args)
+            self.client_process = Process(target=target, args=self.client_args)
             self.client_process.daemon = False
             try:
                 self.client_process.start()

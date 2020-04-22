@@ -19,6 +19,7 @@ VERSION = '1.37'
 ADAPTER = 'en0'
 TIMING_BCAST = 3
 TIMING_INIT = 10
+TIMING_TEST_PACKET = 3
 
 NETWORKS = NetworkHelper()
 
@@ -30,6 +31,13 @@ S_CNT = 0
 THREAD_PCAP_LOOP = None
 ACK_PACKET = None
 PC_MAC = None
+
+
+TEST_PACKETS = [
+    (c_ubyte * 4)(0x90, 0x08, 0x40, 0xff),
+    (c_ubyte * 4)(0x90, 0x08, 0x00, 0x50)
+]
+
 
 def log(msg, *args):
     print(msg % args)
@@ -128,6 +136,24 @@ def make_ack_packet():
 
     return ack_packet
 
+def make_test_packet():
+    global PC_MAC, S_CNT, TEST_PACKETS
+    S_CNT += 1
+    # Get the next test packet data from the list
+    pdata = TEST_PACKETS[S_CNT % len(TEST_PACKETS)]
+    pdata_len = len(pdata)
+    test_packet = c24packet_factory(prm_data_len=pdata_len)()
+    test_packet.struc.ethheader = EthHeader()
+    test_packet.struc.ethheader.macsrc = MacAddress.from_buffer_copy(bytearray.fromhex(MAC.replace(':', '')))
+    test_packet.struc.ethheader.macdest = MacAddress.from_buffer_copy(PC_MAC)
+
+    test_packet.struc.c24header.numcommands = 1
+    test_packet.struc.c24header.numbytes = 16 + pdata_len
+    test_packet.struc.c24header.sendcounter = S_CNT
+    test_packet.struc.packetdata = (c_ubyte * pdata_len).from_buffer_copy(pdata)
+
+    return test_packet
+
 
 # START main program
 def main():
@@ -150,7 +176,9 @@ def main():
             time.sleep(TIMING_BCAST)
             THREAD_PCAP_LOOP.send_packet(bcast_packet)
         elif STATE == 1:
-            time.sleep(TIMING_INIT)
+            time.sleep(TIMING_TEST_PACKET)
+            test_packet = make_test_packet()
+            THREAD_PCAP_LOOP.send_packet(test_packet)
 
 if __name__ == '__main__':
     main()
