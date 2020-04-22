@@ -1259,12 +1259,26 @@ class ProCoscsession(object):
 
                 # CLASS based Desk-Daw, where complex logic is needed so encap. in class
                 cmd_class = parsed_cmd.get('CmdClass')
-                if not cmd_class is None:
+                if cmd_class is not None:
                     # Most class handlers will be within a track
                     # but if not then try the desk object
-                    inst = getattr(track or self.desk, cmd_class.lower())
-                    # Call the desk_to_computer method of the class
-                    inst.d_c(parsed_cmd)
+                    try:
+                        inst = getattr(track or self.desk, cmd_class.lower())
+                        # Call the desk_to_computer method of the class
+                        inst.d_c(parsed_cmd)
+                    except AttributeError:
+                        self.log.warn(
+                            'Looking for mapped cmd_class but it is not found. The map is incorrect. Track: %d Class: %s',
+                            track_number,
+                            cmd_class
+                        )
+                    except:
+                        self.log.error(
+                            'Error looking up cmd_class. Track: %d Class: %s',
+                            track_number,
+                            cmd_class,
+                            exc_info=True
+                        )
 
                 # NON CLASS based Desk-DAW or both
                 if address.startswith('/button/track/'):
