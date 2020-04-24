@@ -47,7 +47,7 @@ TIMING_WAIT_OSC_LISTENER = 4
 TIMING_OSC_LISTENER_RESTART = 1
 TIMING_OSC_CLIENT_RESTART = 1
 TIMING_OSC_CLIENT_LOOP = 4
-TIMING_SCRIBBLESTRIP_RESTORE = 4
+TIMING_SCRIBBLESTRIP_RESTORE = 1
 TIMING_FADER_ECHO = 0.1
 
 SESSION = None
@@ -55,16 +55,6 @@ SESSION = None
 
 # Control24 functions
 # Split command list on repeats of the same starting byte or any instance of the F7 byte
-
-def findintree(obj, key):
-    #TODO see if this will save having to
-    # code button addresses twice
-    if key in obj: return obj[key]
-    for _, v in obj.items():
-        if isinstance(v,dict):
-            item = findintree(v, key)
-            if item is not None:
-                return item
 
 # Housekeeping functions
 def signal_handler(sig, stackframe):
@@ -79,6 +69,9 @@ def signal_handler(sig, stackframe):
 
 # Helper classes to apply standard functionality to C24 classes
 class ModeManager(object):
+    """Mode managers encapsulate stateful mode switching and toggling
+    functionality. Instantiate one into another class to provide
+    that functionality"""
     def __init__(self, modesdict):
         """Build a mode manager from a dict containing the possible modes
         each with a value of a child dict containing any required data items.
@@ -87,7 +80,9 @@ class ModeManager(object):
         """
         # Only accept a dict as the constructor parameter
         if not isinstance(modesdict, dict):
-            raise ValueError("A dict of modes, with subdict of data for each with address was expected.")
+            raise ValueError(
+                "A dict of modes, with subdict of data for each with address was expected."
+                )
         self.modes = dict(modesdict)
         self.modeslist = list(modesdict.keys())
         self.numberofmodes = len(self.modeslist)
@@ -112,9 +107,12 @@ class ModeManager(object):
         if self.is_valid_mode(mode):
             self.mode = mode
         else:
+            self.modes[mode] = {'Address': mode}
             raise IndexError("That mode does not exist.")
 
     def is_valid_mode(self, mode):
+        """Boolean test to ensure mode is currently in the
+        list of valid modes"""
         return self.modes.has_key(mode)
 
     def toggle_mode(self):
@@ -144,11 +142,14 @@ class ModeManager(object):
         else:
             return None
 
+
 # Classes representing Control24
 class C24base(object):
     """base class to make available standard functions"""
     @staticmethod
     def initbytes(bytelist):
+        """load the command byte array with
+        a list of initial values"""
         cmdlength = len(bytelist)
         retbytes = (c_ubyte * cmdlength)()
         for ind, byt in enumerate(bytelist):
@@ -188,6 +189,7 @@ class C24base(object):
             if tbyt is None:
                 tbyt = item.get('TrackByte')
             led = item.get('LED')
+            tog = item.get('Toggle')
             if not kids is None:
                 kidbyts = list(mybyts)
                 kidbyts[cbyt] = key
@@ -199,6 +201,8 @@ class C24base(object):
                     opr = {
                         'cmdbytes': leafbyts
                     }
+                    if tog:
+                        opr['Toggle'] = tog
                     if not tbyt is None:
                         opr['TrackByte'] = tbyt
                     outp[path + '/' + addr] = opr
@@ -231,7 +235,7 @@ class C24nav(C24base):
         self.desk = desk
         # Global / full desk level modes and modifiers
         self.modemgr = ModeManager(self.navmodes)
-        #TODO look how we can deal with arrival of a desk 
+        #TODO look how we can deal with arrival of a desk
         # and the need to initialise things like the NAV
         # button controlled by this class
 
@@ -267,7 +271,7 @@ class C24modifiers(C24base):
         self.command = False
 
     def d_c(self, parsedcmd):
-        """Respond to whichever button is mapped to the 
+        """Respond to whichever button is mapped to the
         class and set the attribute state accordingly"""
         button, val = self.parsedcmd_simplebutton(parsedcmd)
         button = button.lower()
@@ -278,10 +282,30 @@ class C24modifiers(C24base):
 class C24desk(C24base):
     """Class to represent the desk, state and
     instances to help conversions and behaviour"""
+    channels = 24
+    busvus = 1
+    deskmodes = {
+        'Values': {
+            'address': '/track/c24scribstrip/volume',
 
-    def __init__(self, parent):
-        # TODO original mode management to be deprecated
-        self.mode = DEFAULTS.get('scribble')
+        },
+        'Group': {
+            'toggle': True
+        },
+        'Names': {
+            'address': '/track/c24scribstrip/name',
+            'default': True
+        },
+        'Info': {
+            'address': '/track/c24scribstrip/pan'
+        }
+    }
+
+    def __init__(self, osc_client_send, c24_client_send):
+        # DONE original mode management to be deprecated
+        # phunkyg 29/09/2-18
+        # self.mode = DEFAULTS.get('scribble')
+        self.modemgr = ModeManager(self.deskmodes)
         # passthrough methods
         self.osc_client_send = parent.osc_client_send
         self.c24_client_send = parent.c24_client_send
@@ -295,17 +319,17 @@ class C24desk(C24base):
         self.c24modifiers = C24modifiers(self)
 
     def set_mode(self, mode):
-        
-        self.log.debug('Desk mode set: %s', mode)
-        self.mode = mode
+        """set the global desk mode"""
+        LOG.debug('Desk mode set: %s', mode)
+        self.modemgr.set_mode(mode)
         for track in self.c24tracks:
+            track.modemgr.set_mode(mode)
             if hasattr(track, 'c24scribstrip'):
                 track.c24scribstrip.restore_desk_display()
 
     def get_track(self, track):
         """Safely access both the main tracks and any virtual
         ones in the address space between 24 and 31"""
-        
         if track is None:
             return None
         try:
@@ -315,6 +339,8 @@ class C24desk(C24base):
             return None
 
     def long_scribble(self, longtext96chars):
+        """write a long message using ALL the scribble strips
+        as a long alphanumeric display"""
         for track_number, track in enumerate(self.c24tracks):
             if hasattr(track, 'c24scribstrip'):
                 psn = track_number * 4
@@ -330,15 +356,19 @@ class C24track(C24base):
         self.desk = desk
         self.log = desk.log
         self.track_number = track_number
-        self.mode = self.desk.mode
+        self.modemgr = ModeManager(self.desk.modemgr.modes)
         self.osctrack_number = track_number + 1
 
-        if self.track_number <= CHANNELS:
+        if self.track_number < self.desk.channels:
             self.c24fader = C24fader(self)
             self.c24vpot = C24vpot(self)
             self.c24vumeter = C24vumeter(self)
             self.c24buttonled = C24buttonled(self.desk, self)
             self.c24automode = C24automode(self.desk, self)
+
+        # Place a VU meter on virtual tracks above 24, these are bus VUs
+        if self.track_number >= self.desk.channels and self.track_number <= self.desk.channels + self.desk.busvus:
+            self.c24vumeter = C24vumeter(self)
 
         if self.track_number == 28:
             self.c24vpot = C24jpot(self)
@@ -346,7 +376,7 @@ class C24track(C24base):
             # as it physically belongs there
             self.desk.c24jpot = self.c24vpot
 
-        if self.track_number <= CHANNELS or self.track_number in range(25, 27):
+        if self.track_number <= self.desk.channels or self.track_number in range(self.desk.channels, 32):
             self.c24scribstrip = C24scribstrip(self)
 
 
@@ -399,7 +429,7 @@ class C24clock(C24base):
     }
 
     clockbytes = [0xf0, 0x13, 0x01, 0x30, 0x19, 0x00, 0x01,
-                 0x46, 0x4f, 0x67, 0x77, 0x4f, 0x46, 0x01, 0xf7]
+                  0x46, 0x4f, 0x67, 0x77, 0x4f, 0x46, 0x01, 0xf7]
     ledbytes = [0xF0, 0x13, 0x01, 0x20, 0x19, 0x00, 0xF7]
 
     clockmodes = {
@@ -518,7 +548,9 @@ class C24vumeter(C24base):
     # 0xf0, 0x13, 0x01 = display
     # 0x10 - VUs
     # 0-23 Left
-    # 32-  Right
+    # 32-55  Right
+    # 24-> bus left
+    # 56-> bus right
     # 0x00 MSB
     # 0x00 LSB
     # 0xf7 terminator
@@ -548,7 +580,7 @@ class C24vumeter(C24base):
         self.mode = 'postfader'
         self.cmdbytes = (c_ubyte * 8)()
 
-        for ind, byt in enumerate([0xf0, 0x13, 0x01, 0x10, track.track_number, 0x7f,  0x7f, 0xf7]):
+        for ind, byt in enumerate([0xf0, 0x13, 0x01, 0x10, track.track_number, 0x7f, 0x7f, 0xf7]):
             self.cmdbytes[ind] = byt
 
     def __str__(self):
@@ -583,19 +615,20 @@ class C24vumeter(C24base):
 class C24scribstrip(C24base):
     """Class to hold and convert scribblestrip value representations"""
     # 0xf0, 0x13, 0x01 = Displays
-    # 0x40, 0x17       = Scribble strip
+    # 0x40      = Scribble strip
     # 0x00             = track/strip
+    # 0x00      = ?
     # 0x00, 0x00, 0x00, 0x00 = 4 'ascii' chars to display
     # 0xf7             = terminator
 
     def __init__(self, track):
         self.track = track
-        self.log = track.desk.log
-        self.mode = track.mode
+        self.mode = track.modemgr.get_data()
         defaulttext = '  {num:02d}'.format(num=self.track.track_number + 1)
         self.dtext4ch = defaulttext
         self.text = {'/track/number': defaulttext}
         self.cmdbytes = (c_ubyte * 12)()
+        self.last_update = time.time()
 
         self.restore_timer = threading.Timer(
             float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
@@ -613,7 +646,7 @@ class C24scribstrip(C24base):
         )
 
     def set_current_display(self):
-        
+        """send the current display state to the desk"""
         self.transform_text()
         self.cmdbytes[6:10] = [ord(thischar) for thischar in self.dtext4ch]
         self.log.debug('c24scribstrip mode state: %s = %s',
@@ -623,10 +656,13 @@ class C24scribstrip(C24base):
     def restore_desk_display(self):
         """ To be called in a delayed fashion
         to restore channel bar display to desk default"""
-        self.mode = self.track.desk.mode
+        #self.mode.set_mode(self.track.desk.mode)
+        self.mode = self.track.desk.modemgr.get_data().get('address')
         self.set_current_display()
 
     def transform_text(self):
+        """transform the basic text string into one that
+        is ready for the 4 character scribble strip"""
         dtext = self.text.get(self.mode)
         if not dtext is None:
             # The desk has neat characters with a dot and small numeral,
@@ -650,16 +686,18 @@ class C24scribstrip(C24base):
         if address == self.mode:
             self.set_current_display()
         else:
-            self.mode = address
-            self.set_current_display()
-            if self.restore_timer.isAlive:
-                self.restore_timer.cancel()
-            self.restore_timer = threading.Timer(
-                float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
-            self.restore_timer.start()
+            if time.time() - self.last_update > TIMING_SCRIBBLESTRIP_RESTORE:
+                self.mode = address
+                self.set_current_display()
+                if self.restore_timer.isAlive:
+                    self.restore_timer.cancel()
+                self.restore_timer = threading.Timer(
+                    float(TIMING_SCRIBBLESTRIP_RESTORE), self.restore_desk_display)
+                self.restore_timer.start()
 
 
 class C24jpot(C24base):
+    """Class for the Control24 Jog wheel"""
     #'DirectionByte': 2,1
     #'DirectionByteMask': 0x40,
     #'ValueByte': 3
@@ -677,10 +715,8 @@ class C24jpot(C24base):
         #TODO use the mode manager class
         self.mode = None
         self.modes = {
-            'Scrub': { 'address': '/scrub', 'default': True},
-            #'Shuttle': { 'address' : '/vkb_midi/0/cc/90'}
-            'Shuttle': { 'address' : '/playrate/rotary' }
-            #'Shuttle': { 'address' : '/action/974/cc/relative'}
+            'Scrub': {'address': '/scrub', 'default': True},
+            'Shuttle': {'address' : '/playrate/rotary'}
         }
         for key, value in self.modes.iteritems():
             value['msg'] = OSC.OSCMessage(value['address'])
@@ -706,7 +742,6 @@ class C24jpot(C24base):
             self._update_from_move(parsedcmd)
 
     def _update_from_button(self, parsedcmd, addrs):
-        
         if parsedcmd.get('Value') == 1:
             button = addrs[-1]
             if self.modes.has_key(button):
@@ -716,7 +751,6 @@ class C24jpot(C24base):
 
     def _update_from_move(self, parsedcmd):
         """Update from desk command byte list"""
-        
         cbytes = parsedcmd.get('cmdbytes')
         if cbytes:
             for ind, byt in enumerate(cbytes):
@@ -748,6 +782,7 @@ class C24jpot(C24base):
 
 
 class C24vpot(C24base):
+    """Class for the Control24 Virtual Pots"""
     #'DirectionByte': 2,
     #'DirectionByteMask': 0x40,
     #'ValueByte': 3
@@ -835,7 +870,6 @@ class C24vpot(C24base):
 
     def update_led(self):
         """Update the LED display aroudn the vpot"""
-        
         if self.pan > 0 and self.pan < 1:
             self.panv = self.pan - 0.5
             self.pang = int(self.panv * 16) + 7
@@ -856,12 +890,12 @@ class C24vpot(C24base):
 
     @staticmethod
     def led_value(pang):
+        """Look up the value to send to the pot LEDs"""
         return C24vpot.scale_fill[pang]
 
     @staticmethod
     def adj_pan(vpot):
         """Increment/decrement the pan factor from command bytes"""
-        
         potdir = vpot.cmdbytes_d_c[2] - 64
         potvel = vpot.cmdbytes_d_c[3]
         if vpot.track.desk.c24modifiers.command:
@@ -905,7 +939,6 @@ class C24fader(C24base):
 
     def d_c(self, parsedcmd):
         """Desk to Computer. Update from desk command byte list"""
-        
         addr = parsedcmd.get('addresses')
         if addr[1] == 'track':
             self._update_from_fadermove(parsedcmd)
@@ -923,7 +956,6 @@ class C24fader(C24base):
         self.track.desk.c24_client_send(self.cmdbytes)
 
     def _update_from_fadermove(self, parsedcmd):
-        
         cbytes = parsedcmd.get('cmdbytes')
         t_in = ord(cbytes[1])
         if t_in != self.track.track_number:
@@ -931,7 +963,7 @@ class C24fader(C24base):
                       binascii.hexlify(cbytes), self)
             return None
         #TODO tidy up here
-        if len(cbytes) <2:
+        if len(cbytes) < 2:
             self.log.warn('c24fader bad signature %s',
                     parsedcmd)
             return None
@@ -981,21 +1013,32 @@ class C24buttonled(C24base):
     for turning on/off button LED's """
     mapping_osc = {}
     C24base.walk(MAPPING_TREE.get(0x90).get('Children'),
-        '/button', [0x90, 0x00, 0x00], 1, None, mapping_osc)
+                 '/button', [0x90, 0x00, 0x00], 1, None, mapping_osc)
 
     def __init__(self, desk, track):
         self.log = desk.log
         self.desk = desk
         self.track = track
         self.cmdbytes = (c_ubyte * 3)()
+        self.states = {}
 
     def c_d(self, addrlist, stuff):
+        """computer to desk handler"""
         addr = '/'.join(addrlist)
         val = stuff[0]
         self.set_btn(addr, val)
 
+    def d_c(self, parsedcmd):
+        """desk to computer handler"""
+        addr = parsedcmd.get('address')
+        val = parsedcmd.get('Value')
+        valr = self.set_btn(addr, val)
+        if not valr is None:
+            osc_msg = OSC.OSCMessage(addr)
+            self.desk.osc_client_send(osc_msg, valr)
+
     def set_btn(self, addr, val):
-        
+        """set button value"""
         try:
             lkpbtn = C24buttonled.mapping_osc[addr]
             self.log.debug("Button LED: %s", lkpbtn)
@@ -1003,19 +1046,38 @@ class C24buttonled(C24base):
                 tbyt = lkpbtn.get('TrackByte')
             else:
                 tbyt = None
-            # Copy the byte sequence injecting track number
-            for ind, byt in enumerate(lkpbtn['cmdbytes']):
-                c_byt = c_ubyte(byt)
-                if ind == tbyt and not self.track is None:
-                    c_byt.value = c_byt.value | self.track.track_number
-                # On or Off
-                if ind == 2 and val == 1:
-                    c_byt.value = c_byt.value | 0x40
-                self.cmdbytes[ind] = c_byt
-            self.log.debug("Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
-            self.desk.c24_client_send(self.cmdbytes)
+            tog = lkpbtn.get('Toggle')
+            if (tog and val == 1) or not tog:
+                if tog:
+                    vals = self.toggle_state(addr)
+                else:
+                    vals = val
+                # Copy the byte sequence injecting track number
+                for ind, byt in enumerate(lkpbtn['cmdbytes']):
+                    c_byt = c_ubyte(byt)
+                    if ind == tbyt and not self.track is None:
+                        c_byt.value = c_byt.value | self.track.track_number
+                    # On or Off
+                    if ind == 2 and vals == 1:
+                        c_byt.value = c_byt.value | 0x40
+                    self.cmdbytes[ind] = c_byt
+                self.log.debug("Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
+                self.desk.c24_client_send(self.cmdbytes)
+                return vals
         except KeyError:
             self.log.warn("OSCServer LED not found: %s %s", addr, str(val))
+        return None
+
+    def toggle_state(self, addr):
+        """toggle between on and off states"""
+        state = self.states.get('addr') or 0.0
+        if state == 0.0:
+            state = 1.0
+        else:
+            state = 0.0
+        self.states[addr] = state
+        return state
+
 
 class C24automode(C24base):
     """ class to deal with the automation toggle on a track
@@ -1048,12 +1110,14 @@ class C24automode(C24base):
         )
 
     def c_d(self, addrlist, stuff):
+        """computer to desk handler"""
         mode_in = addrlist[3]
         mode_onoff = bool(stuff[0])
         self.set_mode(mode_in, mode_onoff)
         self.update_led()
 
     def d_c(self, parsedcmd):
+        """deskt to computer handler"""
         val = parsedcmd.get('Value')
         if val == 1:
             first = None
@@ -1078,6 +1142,7 @@ class C24automode(C24base):
             self.update_led()
 
     def daw_mode(self, mode_in, onoff):
+        """send the current mode to the DAW"""
         addr = '/track/c24automode/{}/{}'.format(
             mode_in,
             self.track.osctrack_number
@@ -1087,6 +1152,7 @@ class C24automode(C24base):
         self.track.desk.osc_client_send(msg)
 
     def set_mode(self, mode_in, onoff):
+        """set the current mode state"""
         mode = self.modes.get(mode_in)
         mode['state'] = onoff
         bitv = mode.get('cmd')
@@ -1099,12 +1165,12 @@ class C24automode(C24base):
 
     def update_led(self):
         """Update the LED display by the auto toggle"""
-        
         self.track.desk.c24_client_send(self.cmdbytes)
         self.log.debug('AUTO LED: %s', self)
 
-# Class for the client session
+
 class C24oscsession(object):
+    """Class for the entire client session"""
     mapping_tree = MAPPING_TREE
     # Extract a list of first level command bytes from the mapping tree
     # To use for splitting up multiplexed command sequences
@@ -1119,7 +1185,7 @@ class C24oscsession(object):
                 current.append(item)
                 yield current
                 current = []
-            #TODO change 'in splitlist' to just use MSB as all MIDI status bytes have this bit set.    
+            #TODO change 'in splitlist' to just use MSB as all MIDI status bytes have this bit set.
             elif ord(item) in C24oscsession.splitlist and not current == []:
                 yield current
                 current = [item]
@@ -1141,7 +1207,6 @@ class C24oscsession(object):
     @staticmethod
     def parsecmd(cmdbytes):
         """take a byte list split from the packet data and find it in the mapping dict tree"""
-        
         # possibly evil but want to catch these for a more fluid
         # debugging session if they occur a lot
         if not isinstance(cmdbytes, list):
@@ -1159,19 +1224,31 @@ class C24oscsession(object):
             level = level + 1
             lkp = lkp.get(this_byte)
             if not lkp:
+                self.log.warn(
+                    'Level %d byte not found in MAPPING_TREE: %02x. New mapping needed for sequence %s',
+                    level,
+                    this_byte,
+                    cmdbytes
+                    )
                 return None
             # Copy this level's dict entries but not the children subdict. i.e. flatten/accumulate
             if "Address" in lkp:
                 parsedcmd["addresses"].append('/')
                 parsedcmd["addresses"].append(lkp["Address"])
             parsedcmd.update(
-                {key: lkp[key] for key in lkp if "Byte" in key or "Class" in key or "SetMode" in key}
+                {key: lkp[key] for key in lkp if any([
+                    "Byte" in key,
+                    "Class" in key,
+                    "SetMode" in key,
+                    "Toggle" in key
+                ])}
             )
             if 'ChildByte' in lkp:
                 this_byte_num = lkp['ChildByte']
                 try:
                     this_byte = ord(cmdbytes[this_byte_num])
                 except IndexError:
+                    self.log.warn('Parsecmd: byte not found. Possible malformed command: %s')
                     return None
                 if 'ChildByteMask' in lkp:
                     this_byte = this_byte & lkp['ChildByteMask']
@@ -1220,7 +1297,6 @@ class C24oscsession(object):
 
     # Event methods
     def _desk_to_daw(self, c_databytes):
-        
         self.log.debug(binascii.hexlify(c_databytes))
         commands = C24oscsession.cmdsplit(c_databytes)
         self.log.debug('nc: %d', len(commands))
@@ -1235,7 +1311,12 @@ class C24oscsession(object):
                 # If map indicates a mode is to be set then call the setter
                 set_mode = parsed_cmd.get('SetMode')
                 if set_mode:
-                    self.desk.mode = set_mode
+                    #Suspect commented out line was a bug preventing
+                    # proper desk wide scriblle updates.
+                    #should have been calling set mode function not setting object.
+                    #@phunkyg 29/09/18
+                    self.desk.set_mode(set_mode)
+                    #self.desk.mode = set_mode
 
                 # CLASS based Desk-Daw, where complex logic is needed so encap. in class
                 cmd_class = parsed_cmd.get('CmdClass')
@@ -1245,24 +1326,15 @@ class C24oscsession(object):
                     inst = getattr(track or self.desk, cmd_class.lower())
                     # Call the desk_to_computer method of the class
                     inst.d_c(parsed_cmd)
-
-                # NON CLASS based Desk-DAW or both
-                if address.startswith('/button/track/'):
-                    # Channel strip buttons.
-                    # We will assume the track object is here already
-                    osc_msg = OSC.OSCMessage(address)
-                    if not osc_msg is None:
-                        self.osc_client_send(osc_msg, parsed_cmd['Value'])
-                # ANY OTHER buttons
-                # If the Reaper.OSC file has something at this address
-                elif address.startswith('/button'):
-                    osc_msg = OSC.OSCMessage(address)
-                    if not osc_msg is None:
-                        self.osc_client_send(osc_msg, parsed_cmd['Value'])
+                else:
+                    # NON CLASS based Desk-DAW i.e. basic buttons
+                    if 'button' in parsed_cmd.get('addresses'):
+                        osc_msg = OSC.OSCMessage(address)
+                        if not osc_msg is None:
+                            self.osc_client_send(osc_msg, parsed_cmd.get('Value'))
 
     def _daw_to_desk(self, addr, tags, stuff, source):
         """message handler for the OSC listener"""
-        
         if self.osc_listener_last is None:
             self.osc_listener_last = source
         self.log.debug("OSC Listener received Message: %s %s [%s] %s",
@@ -1411,7 +1483,6 @@ class C24oscsession(object):
     def osc_client_send(self, osc_msg, simplevalue=None):
         """dry up the calls to osc client send
         that are wrapped in a connection check"""
-        
         if not simplevalue is None:
             osc_msg.append(simplevalue)
         self.log.debug('OSCClient sending: %s', osc_msg)
@@ -1429,7 +1500,6 @@ class C24oscsession(object):
     def c24_client_send(self, cmdbytes):
         """dry up the calls to the MP send that
         are wrapped in a connection check"""
-        
         if self.c24_client_is_connected:
             self.log.debug("MP send: %s",
                       binascii.hexlify(cmdbytes))
@@ -1497,7 +1567,6 @@ class C24oscsession(object):
 
     def close(self):
         """Placeholder if we need a shutdown method"""
-        
         self.log.info("C24oscsession closing")
         # For threads under direct control this signals to please end
         self.is_closing = True
@@ -1508,10 +1577,10 @@ class C24oscsession(object):
 
     def __del__(self):
         """Placeholder to see if session object destruction is a useful hook"""
-        
+
         self.log.debug("C24oscsession del")
         self.close()
-    
+
 
 # START main program
 def main():

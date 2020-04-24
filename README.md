@@ -37,7 +37,7 @@ You will need super user (or elevated Administrator in Windows) privileges to us
 
 ### Installing - OSX, macos, Linux
 
-Ensure the current or default python environment has a 2.x interpreter in the current path (enter 'python' at the command line), and install the pre-requisites into user environment using pip or similar
+Ensure the current or default python environment has a 2.x interpreter in the current path (enter 'python' at the command line to check), and install the pre-requisites into user environment using pip or similar
 
 Example pip install
 
@@ -45,25 +45,34 @@ Example pip install
 pip install -r requirements.txt --user
 ```
 
-By default all log outputs will be created into a subdirectory below wherever you install the files, so choose somewhere that this can happen without issues
+By default all log outputs will be created into the *logs* subdirectory below wherever you unpack/install the files, so choose somewhere that this can happen without issues.
 
 Some older python installations in OSX do cause issues as they pre-date upgrades in the python security/encryption, so please ensure you are at the highest OS level you can be, and if that is not enough, you can find guides online on how to make the changes you need to python, or to install a second python environment just for ReaControl.
 
 ### Installing - Windows 10
 
-The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process at: http://TODO
+The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process [in the doc subfolder](/doc/Windows_Setup.mp4)
 
-* Download and install latest 64 bit Python 2.7.x - https://www.python.org/downloads
-* Download and install Npcap ensuring to tick the WinPcap API-compatible mode which is off by default - https://nmap.org/npcap/
-    * Current version of Main Installer: https://nmap.org/npcap/dist/npcap-0.99-r7.exe
+* Download and install latest 64 bit Python 2.7.x
+    * General Download Page: https://www.python.org/downloads
+    * Windows 64 bit 2.7.13 Web Installer: https://www.python.org/ftp/python/2.7.13/python-2.7.13.amd64.msi
+    * It is recommended to install python in the system drive, in a subfolder e.g. C:\python
+    * In the installer options, at a minimum ensure that the following are set:
+        * Install pip
+        * Install for all users
+* Download and install Npcap 
+    * Home Page: https://nmap.org/npcap/
+    * Current version of Main Installer: https://nmap.org/npcap/dist/npcap-0.99-r8.exe
+    * Make sure to tick the _WinPcap API-compatible mode_ which is off by default
+    * Don't install the loopback adapter unless you want it for another need
 * Download the Npcap SDK
-    * Current version of SDK Download: https://nmap.org/npcap/dist/npcap-sdk-0.1.zip
-* Download and install the c++ compiler for python - https://www.microsoft.com/en-us/download/details.aspx?id=44266
-* Download the sources from github for: pypcap - https://github.com/pynetwork/pypcap/releases - currently 1.2.1
+    * Current version of SDK Download: https://nmap.org/npcap/dist/npcap-sdk-1.01.zip
+* Download and install the c++ compiler for python: https://www.microsoft.com/en-us/download/details.aspx?id=44266
+* Download the sources from github for: pypcap (currently 1.2.1): https://github.com/pynetwork/pypcap/releases - 
 
 (Following is a re-statement of the procedure for 'installation from sources' of pypcap found at - https://github.com/pynetwork/pypcap/blob/master/docs/index.rst)
 
-Choose a folder to work in: The 'install' subfolder of ReaControl24 is a reasonable choice.
+Choose a folder to work in: Creating an 'install' subfolder under where you unpacked this repo (ReaControl24) is a reasonable choice.
 
 * Unzip the pypcap download into the chosen install folder. 
     * Check if the zip made 2 folders called 'pypcap-1.2.0' or similar, one within the other. If so, move the inner one down a level so it sits under 'install'
@@ -88,8 +97,8 @@ Installed c:\python27\lib\site-packages\pypcap-1.2.0-py2.7-win-amd64.egg
 pip install -r requirements.txt -U
 ```
 
-When complete, to run the daemon, rather than using 'sudo', use an 'Administrator command prompt' and omit the sudo
-When supplying a network name, either the name or the GUID will work. If you are struggling to find the right value, use the --help command line switch and the program will list them for you.
+When complete, to run the daemon, rather than using 'sudo', use an 'Administrator command prompt' and omit the sudo from the command line.
+When supplying a network name, either the name (as it appears in the Windows network control panel settings) or the GUID will work. If you are struggling to find the right value, use the -n command line switch with a junk/bad value and the program will fail, but will list all your network adapter GUID and Names for you.
 
 
 ## Getting Started
@@ -102,7 +111,7 @@ For a quick start, if your DAW and Control24 are on the same LAN, and you intend
 * For windows start one Administrator command prompt, for other OS a normal terminal will do and use 'sudo'. 
 * Run the *daemon process*
 ```
-sudo python control24d.py
+sudo python ReaControl.py
 ```
 
 * You should see a little feedback in each window as each component connects to the others
@@ -111,7 +120,7 @@ sudo python control24d.py
     * The Log files will also contain a detailed CSV version of what you see
     * If your network addresses and ports aren't right, try supplying the network switch on the daemon process (-n) with a rubbish name. This will dump a list of valid networks to help you choose.
 ```
-sudo python control24d.py -n NO_NETWORK
+sudo python ReaControl.py -n NO_NETWORK
 ```
 
 ### How to set up Reaper.OSC
