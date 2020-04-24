@@ -1,14 +1,10 @@
-# WELCOME ALL TESTERS!
+# LOOKING FOR DEV_OtherDevices?
 
-You are in the DEV_OtherDevices branch which means you're probably here to do some testing. Thanks for your help!
 
-This README gets developed along with the code, so we'll be updating this as we go along. It may therefore be out of date.
+You are in the DEV_OtherDevices_Refactor branch
+You probably wanted the DEV_OtherDevices branch
 
-Current notes for using this branch:
-
-* You'll probably be asked to use the debug flag at some point (-d) to get some logs to the devs, see below
-* The client process doesn't need running manually, it is auto-launched from the daemon process
-
+This is phunkyg's branch for tidying things up around here!
 
 
 
