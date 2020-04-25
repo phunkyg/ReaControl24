@@ -193,6 +193,8 @@ class C24base(object):
             if tbyt is None:
                 tbyt = item.get('TrackByte')
             led = item.get('LED')
+            tog = item.get('Toggle')
+            act = item.get('Action')
             if not kids is None:
                 kidbyts = list(mybyts)
                 kidbyts[cbyt] = key
@@ -204,6 +206,10 @@ class C24base(object):
                     opr = {
                         'cmdbytes': leafbyts
                     }
+                    if tog:
+                        opr['Toggle'] = tog
+                    # if act:      #  probably not necessaryt was copying toggle style
+                    #     opr['Action'] = act
                     if not tbyt is None:
                         opr['TrackByte'] = tbyt
                     outp[path + '/' + addr] = opr
@@ -322,6 +328,8 @@ class ProCdesk(C24base):
             return None
 
     def long_scribble(self, longtextallchars):
+        """write a long message using ALL the scribble strips
+        as a long alphanumeric display"""
         for track_number, track in enumerate(self.c24tracks):
             if hasattr(track, 'procscribstrip'):
                 psn = track_number * ProCscribstrip.digits
@@ -632,7 +640,7 @@ class ProCscribstrip(C24base):
         )
 
     def set_current_display(self):
-
+        """send the current display state to the desk"""
         self.transform_text()
         self.cmdbytes[6:ProCscribstrip.digits+6] = [ord(thischar) for thischar in self.dtext8ch]
         trace(self.log, 'ProCscribstrip mode state: %s = %s',
@@ -646,6 +654,8 @@ class ProCscribstrip(C24base):
         self.set_current_display()
 
     def transform_text(self):
+        """transform the basic text string into one that
+        is ready for the 4 character scribble strip"""
         dtext = self.text.get(self.mode)
         if not dtext is None:
             # The desk has neat characters with a dot and small numeral,
@@ -680,6 +690,7 @@ class ProCscribstrip(C24base):
 
 
 class C24jpot(C24base):
+    """Class for the ProControl Jog wheel"""
     # 'DirectionByte': 2,1
     # 'DirectionByteMask': 0x40,
     # 'ValueByte': 3
@@ -768,6 +779,7 @@ class C24jpot(C24base):
 
 
 class C24vpot(C24base):
+    """Class for the ProControl Virtual Pots"""
     # 'DirectionByte': 2,
     # 'DirectionByteMask': 0x40,
     # 'ValueByte': 3
@@ -1009,12 +1021,13 @@ class C24buttonled(C24base):
         self.cmdbytes = (c_ubyte * 3)()
 
     def c_d(self, addrlist, stuff):
+        """computer to desk handler"""
         addr = '/'.join(addrlist)
         val = stuff[0]
         self.set_btn(addr, val)
 
     def set_btn(self, addr, val):
-
+        """set button value"""
         try:
             lkpbtn = C24buttonled.mapping_osc[addr]
             self.log.debug("Button LED: %s", lkpbtn)
@@ -1022,19 +1035,37 @@ class C24buttonled(C24base):
                 tbyt = lkpbtn.get('TrackByte')
             else:
                 tbyt = None
+            # added for Toggle dict value from procontrol24.py
+            tog = lkpbtn.get('Toggle')
+            if (tog and val == 1) or not tog:
+                if tog:
+                    vals = self.toggle_state(addr)
+                else:
+                    vals = val
             # Copy the byte sequence injecting track number
             for ind, byt in enumerate(lkpbtn['cmdbytes']):
                 c_byt = c_ubyte(byt)
                 if ind == tbyt and not self.track is None:
                     c_byt.value = c_byt.value | self.track.track_number
                 # On or Off
-                if ind == 2 and val == 1:
+                if ind == 2 and vals == 1:
                     c_byt.value = c_byt.value | 0x40
                 self.cmdbytes[ind] = c_byt
             trace(self.log, "Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
             self.desk.c24_client_send(self.cmdbytes)
+            return vals
         except KeyError:
             self.log.warn("OSCServer LED not found: %s %s", addr, str(val))
+            return None
+    def toggle_state(self, addr):
+        """toggle between on and off states"""
+        state = self.states.get('addr') or 0.0
+        if state == 0.0:
+            state = 1.0
+        else:
+            state = 0.0
+        self.states[addr] = state
+        return state
 
 
 class C24automode(C24base):
@@ -1098,6 +1129,7 @@ class C24automode(C24base):
             self.update_led()
 
     def daw_mode(self, mode_in, onoff):
+        """send the current mode to the DAW"""
         addr = '/track/c24automode/{}/{}'.format(
             mode_in,
             self.track.osctrack_number
@@ -1107,6 +1139,7 @@ class C24automode(C24base):
         self.track.desk.osc_client_send(msg)
 
     def set_mode(self, mode_in, onoff):
+        """set the current mode state"""
         mode = self.modes.get(mode_in)
         mode['state'] = onoff
         bitv = mode.get('cmd')
@@ -1185,7 +1218,13 @@ class ProCoscsession(object):
                 parsedcmd["addresses"].append('/')
                 parsedcmd["addresses"].append(lkp["Address"])
             parsedcmd.update(
-                {key: lkp[key] for key in lkp if "Byte" in key or "Class" in key or "SetMode" in key}
+                {key: lkp[key] for key in lkp if any ([
+                    "Byte" in key,
+                    "Class" in key,
+                    "SetMode" in key,
+                    "Toggle" in key,
+                    "Action" in key  # experimental action osc messages
+                ])}
             )
             if 'ChildByte' in lkp:
                 this_byte_num = lkp['ChildByte']
@@ -1234,13 +1273,11 @@ class ProCoscsession(object):
             except IndexError:
                 value_byte = 0x00
                 parsedcmd["Value"] = 0.0
-
         parsedcmd["address"] = ''.join(parsedcmd["addresses"])
         return parsedcmd
 
     # Event methods
     def _desk_to_daw(self, c_databytes):
-
         trace(self.log, binascii.hexlify(c_databytes))
         commands = ProCoscsession.cmdsplit(c_databytes)
         trace(self.log, 'nc: %d', len(commands))
@@ -1255,7 +1292,12 @@ class ProCoscsession(object):
                 # If map indicates a mode is to be set then call the setter
                 set_mode = parsed_cmd.get('SetMode')
                 if set_mode:
-                    self.desk.mode = set_mode
+                    #Suspect commented out line was a bug preventing
+                    # proper desk wide scriblle updates.
+                    #should have been calling set mode function not setting object.
+                    #@phunkyg 29/09/18
+                    self.desk.set_mode(set_mode)
+                    #self.desk.mode = set_mode
 
                 # CLASS based Desk-Daw, where complex logic is needed so encap. in class
                 cmd_class = parsed_cmd.get('CmdClass')
@@ -1265,28 +1307,46 @@ class ProCoscsession(object):
                     inst = getattr(track or self.desk, cmd_class.lower())
                     # Call the desk_to_computer method of the class
                     inst.d_c(parsed_cmd)
+                else:
 
-                # NON CLASS based Desk-DAW or both
-                if address.startswith('/button/track/'):
-                    # Channel strip buttons.
-                    # We will assume the track object is here already
-                    osc_msg = OSC.OSCMessage(address)
-                    if not osc_msg is None:
-                        self.osc_client_send(osc_msg, parsed_cmd['Value'])
-                # ANY OTHER buttons
-                # If the Reaper.OSC file has something at this address
-                elif address.startswith('/button'):
-                    osc_msg = OSC.OSCMessage(address)
-                    if not osc_msg is None:
-                        self.osc_client_send(osc_msg, parsed_cmd['Value'])
+                    # NON CLASS based Desk-DAW or both
+                    # this not in Release was experimental first version?
+                    val = parsed_cmd.get('Value')
+                    tog = parsed_cmd.get('Toggle')
+                    act = parsed_cmd.get('Action')
+                    # act_val = 40280 # not needed intital test only
+                    if (act and val  == 1):
+                        osc_msg = OSC.OSCMessage()
+                        osc_msg.setAddress("/action")
+                        osc_msg.append(act)
+                        self.osc_client_send(osc_msg)
+                    else:
+                        if (tog and val == 1) or not tog:
+                            if address.startswith('/button/track/'):
+                            # Channel strip buttons.
+                            # We will assume the track object is here already
+                                osc_msg = OSC.OSCMessage(address)
+                                if not osc_msg is None:
+                                    self.osc_client_send(osc_msg, val)
+                        # ANY OTHER buttons
+                        # If the Reaper.OSC file has something at this address
+                        # elif address.startswith('/button'):
+                        # NON CLASS based Desk-DAW i.e. basic buttons
+                        elif 'button' in parsed_cmd.get('addresses'):
+                            osc_msg = OSC.OSCMessage(address)
+                            if not osc_msg is None:
+                                self.osc_client_send(osc_msg, parsed_cmd.get('Value'))
 
     def _daw_to_desk(self, addr, tags, stuff, source):
         """message handler for the OSC listener"""
-        trace(self.log,'received from DAW: %s', addr)
-        if self.osc_listener_last is None:
-            self.osc_listener_last = source
+        trace(self.log, "Received OSC message")
         self.log.debug("OSC Listener received Message: %s %s [%s] %s",
                        source, addr, tags, str(stuff))
+        if self.osc_listener_last is None:
+            self.osc_listener_last = source
+        elif self.osc_listener_last != source:
+            self.log.warn('OSC message received from an unexpected source address %s', source)
+
         # TODO primitive switching needs a proper lookup map
         addrlist = addr.split('/')
         if 'track' in addrlist:
@@ -1396,7 +1456,7 @@ class ProCoscsession(object):
             self.osc_client = OSC.OSCClient()
             while self.osc_listener is None or self.osc_listener_last is None or not self.osc_listener.running:
                 self.log.debug(
-                    'Waiting for the OSC listener to get a client %s', self.osc_listener_last)
+                    'Waiting for the OSC listener to get a client. Last seen was: %s', self.osc_listener_last)
                 time.sleep(TIMING_WAIT_OSC_LISTENER)
             try:
                 self.log.debug('Starting OSC Client connecting to %s',
@@ -1460,6 +1520,7 @@ class ProCoscsession(object):
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
         self.log = start_logging("procontrolosc", opts.logdir, opts.debug)
+        trace(self.log, 'Options %s', str(opts))
         self.desk = ProCdesk(self)
         try:
             self.standalone = pipe is None
