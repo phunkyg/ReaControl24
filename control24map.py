@@ -274,22 +274,22 @@ MAPPING_TREE = {
                             0x23: {
                                 'Address': 'Shift',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x24: {
                                 'Address': 'Option',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x25: {
                                 'Address': 'Control',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x26: {
                                 'Address': 'Command',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x27: {
                                 'Address': 'Auto-Select',
@@ -362,7 +362,7 @@ MAPPING_TREE = {
                                 'Zone': 'Window',
                                 'LED': True,
                                 'Toggle': True,
-                                'CmdClass': 'C24buttonled'
+                                'CmdClass': 'ReaButtonLed'
                             },
                             0x01: {
                                 'Address': 'Edit-Bypass',
@@ -403,44 +403,44 @@ MAPPING_TREE = {
                                 'Address': 'Nav',
                                 'Zone': 'Navigation',
                                 'LED': True,
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x0d: {
                                 'Address': 'Zoom',
                                 'Zone': 'Navigation',
                                 'LED': True,
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x0e: {
                                 'Address': 'SelAdj',
                                 'Zone': 'Navigation',
                                 'LED': True,
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x0f: {
                                 'Address': 'CursorUp',
                                 'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x10: {
                                 'Address': 'CursorLeft',
                                 'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x11: {
                                 'Address': 'CursorRight',
                                 'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x12: {
                                 'Address': 'CursorDown',
                                 'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x13: {  # oddly placed, clock mode
                                 'Address': 'CounterMode',
                                 'Zone': 'Counter',
-                                'CmdClass': 'C24clock'
+                                'CmdClass': 'ReaClock'
                             }
                         }
                     },
@@ -527,7 +527,7 @@ MAPPING_TREE = {
                                 'Zone': 'Edit Mode',
                                 'LED': True,
                                 'Toggle': True,
-                                'CmdClass': 'C24buttonled'
+                                'CmdClass': 'ReaButtonLed'
                             },
                             0x04: {
                                 'Address': 'Cut',

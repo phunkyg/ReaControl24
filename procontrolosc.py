@@ -17,9 +17,10 @@ from optparse import OptionError
 
 import OSC
 
-from control24common import (DEFAULTS, FADER_RANGE, NetworkHelper,
-                             opts_common, tick, SIGNALS, start_logging, trace)
-from procontrolmap import MAPPING_TREE_PROC
+from ReaCommon import (ModeManager, ReaBase, ReaNav, ReaModifiers, _ReaDesk, _ReaTrack, ReaButtonLed,
+                       DEFAULTS, FADER_RANGE, NetworkHelper,
+                       opts_common, tick, SIGNALS, start_logging, trace)
+import procontrolmap
 
 '''
     This file is part of ReaProcontrol. Control Surface Middleware.
@@ -58,15 +59,7 @@ SESSION = None
 # Procontrol functions
 # Split command list on repeats of the same starting byte or any instance of the F7 byte
 
-def findintree(obj, key):
-    # TODO see if this will save having to
-    # code button addresses twice
-    if key in obj: return obj[key]
-    for _, v in obj.items():
-        if isinstance(v, dict):
-            item = findintree(v, key)
-            if item is not None:
-                return item
+
 
 
 # Housekeeping functions
@@ -80,606 +73,103 @@ def signal_handler(sig, stackframe):
     sys.exit(0)
 
 
-# Helper classes to apply standard functionality to C24 classes
-class ModeManager(object):
-    def __init__(self, modesdict):
-        """Build a mode manager from a dict containing the possible modes
-        each with a value of a child dict containing any required data items.
-        If the data contains a key 'default' then that will set the initial mode
-        otherwise one will be chosen arbitrarily
-        """
-        # Only accept a dict as the constructor parameter
-        if not isinstance(modesdict, dict):
-            raise ValueError("A dict of modes, with subdict of data for each with address was expected.")
-        self.modes = dict(modesdict)
-        self.modeslist = list(modesdict.keys())
-        self.numberofmodes = len(self.modeslist)
-        # Iterate to find the default and also
-        # build / init anything needed along the way:
-        #  - Create an OSC message for any address
-        self.mode = None
-        first = None
-        for key, value in self.modes.iteritems():
-            if first is None:
-                first = key
-            # Construct an OSC message for each address
-            if value.has_key('address'):
-                value['msg'] = OSC.OSCMessage(value['address'])
-            if value.get('default'):
-                self.mode = key
-        if self.mode is None:
-            self.mode = first
 
-    def set_mode(self, mode):
-        """directly set the mode to the key requested"""
-        if self.is_valid_mode(mode):
-            self.mode = mode
-        else:
-            raise IndexError("That mode does not exist.")
-
-    def is_valid_mode(self, mode):
-        return self.modes.has_key(mode)
-
-    def toggle_mode(self):
-        """set the mode to the next one in order of the original
-        dict passed"""
-        thiskeyindex = self.modeslist.index(self.mode)
-        if thiskeyindex < self.numberofmodes - 1:
-            self.mode = self.modeslist[thiskeyindex + 1]
-        else:
-            self.mode = self.modeslist[0]
-
-    def get_data(self):
-        """return the whole data dict for the current mode"""
-        return self.modes.get(self.mode)
-
-    def get(self, key):
-        """ pass through method to current mode data dict get"""
-        return self.modes.get(self.mode).get(key)
-
-    def get_msg(self):
-        """return only the OSC message for the current mode"""
-        currmode = self.get_data()
-        msg = currmode.get('msg')
-        if msg:
-            msg.clearData()
-            return msg
-        else:
-            return None
 
 
 # Classes representing Procontrol
-class C24base(object):
-    """base class to make available standard functions"""
-
-    @staticmethod
-    def initbytes(bytelist):
-        cmdlength = len(bytelist)
-        retbytes = (c_ubyte * cmdlength)()
-        for ind, byt in enumerate(bytelist):
-            retbytes[ind] = byt
-        return retbytes
-
-    @staticmethod
-    def parsedcmd_simplebutton(parsedcmd):
-        """from a parsedcmd, extract the last address and value"""
-        # TODO investigate if a parsed command class is the way to go instead
-        return parsedcmd.get('addresses')[-1], parsedcmd.get('Value')
-
-    @staticmethod
-    def tenbits(num):
-        """Return 7 bits in one byte and 3 in the next for an integer provided"""
-        num = num & 0x3FF
-        return (num >> 3, (num & 7) << 4)
-
-    @staticmethod
-    def calc_faderscale():
-        """Return a dict that converts tenbit 7 bit pair into gain factor 0-1"""
-        fader_range = 2 ** 10
-        fader_step = 1 / float(fader_range)
-        return {C24base.tenbits(num): num * fader_step for num in range(0, fader_range)}
-
-    @staticmethod
-    def walk(node, path, byts, cbyt, tbyt, outp):
-        """Walk the mapping tree picking off the LED
-        buttons, and inverting the sequence.
-        Basically because too lazy to hand write a second
-        map and keep them in step"""
-        mybyts = list(byts)
-        for key, item in node.items():
-            addr = item.get('Address', '')
-            kids = item.get('Children')
-            kbyt = item.get('ChildByte')
-            if tbyt is None:
-                tbyt = item.get('TrackByte')
-            led = item.get('LED')
-            if not kids is None:
-                kidbyts = list(mybyts)
-                kidbyts[cbyt] = key
-                C24base.walk(kids, path + '/' + addr, kidbyts, kbyt, tbyt, outp)
-            else:
-                if addr != '' and led:
-                    leafbyts = list(mybyts)
-                    leafbyts[cbyt] = key
-                    opr = {
-                        'cmdbytes': leafbyts
-                    }
-                    if not tbyt is None:
-                        opr['TrackByte'] = tbyt
-                    outp[path + '/' + addr] = opr
 
 
-class C24nav(C24base):
-    """Class to manage the desk navigation section
-    and cursor keys with 3 modes going to different
-    OSC addresses"""
-    # TODO look up the addresses instead of double coding them here
-    # probably from the existing MAPPING_OSC
-    navmodes = {
-        'Nav': {
-            'address': '/button/command/Window+ZoomPresets+Navigation/Nav',
-            'osc_address': '/scroll/',
-            'default': True
-        },
-        'Zoom': {
-            'address': '/button/command/Window+ZoomPresets+Navigation/Zoom',
-            'osc_address': '/zoom/'
-        },
-        'SelAdj': {
-            'address': '/button/command/Window+ZoomPresets+Navigation/SelAdj',
-            'osc_address': '/fxcursor/'
-        }
-    }
-
-    def __init__(self, desk):
-        self.log = desk.log
-        self.desk = desk
-        # Global / full desk level modes and modifiers
-        self.modemgr = ModeManager(self.navmodes)
-        # TODO look how we can deal with arrival of a desk 
-        # and the need to initialise things like the NAV
-        # button controlled by this class
-
-    def d_c(self, parsedcmd):
-        """Respond to desk buttons mapped to this class"""
-        button, val = self.parsedcmd_simplebutton(parsedcmd)
-        if self.modemgr.is_valid_mode(button):
-            if val == 1:
-                self.modemgr.set_mode(button)
-                self.update()
-        else:  # remainder is the cursors mapped to class
-            addr = self.modemgr.get('osc_address') + button
-            msg = OSC.OSCMessage(addr)
-            self.desk.osc_client_send(msg, val)
-
-    def update(self):
-        """Update button LEDs"""
-        for key, val in self.modemgr.modes.iteritems():
-            addr = val.get('address')
-            butval = int(key == self.modemgr.mode)
-            self.desk.c24buttonled.set_btn(addr, butval)
-
-
-class C24modifiers(C24base):
-    """Class to hold current state of press and release modifier
-    keys"""
-
-    def __init__(self, desk):
-        self.log = desk.log
-        self.desk = desk
-        self.shift = False
-        self.option = False
-        self.control = False
-        self.command = False
-
-    def d_c(self, parsedcmd):
-        """Respond to whichever button is mapped to the 
-        class and set the attribute state accordingly"""
-        button, val = self.parsedcmd_simplebutton(parsedcmd)
-        button = button.lower()
-        if hasattr(self, button):
-            setattr(self, button, bool(val))
-
-
-class ProCdesk(C24base):
+class ProCdesk(_ReaDesk):
     """Class to represent the desk, state and
     instances to help conversions and behaviour"""
-    channels = 8
+    real_channels = 8
+    virtual_channels = 0
+    busvus = 1
+    deskmodes = {
+        'Values': {
+            'address': '/track/procscribstrip/volume',
 
-    def __init__(self, parent):
-        # TODO original mode management to be deprecated
-        self.mode = DEFAULTS.get('scribble')
-        # passthrough methods
-        self.osc_client_send = parent.osc_client_send
-        self.c24_client_send = parent.c24_client_send
-        self.log = parent.log
-        # Set up the child track objects
-        self.c24tracks = [ProCtrack(self, track_number)
-                          for track_number in range(0, self.channels)]
-        self.c24clock = C24clock(self)
-        self.c24buttonled = C24buttonled(self, None)
-        self.c24nav = C24nav(self)
-        self.c24modifiers = C24modifiers(self)
-
-    def set_mode(self, mode):
-
-        self.log.debug('Desk mode set: %s', mode)
-        self.mode = mode
-        for track in self.c24tracks:
-            if hasattr(track, 'procscribstrip'):
-                track.procscribstrip.restore_desk_display()
-
-    def get_track(self, track):
-        """Safely access both the main tracks and any virtual
-        ones in the address space between 24 and 31"""
-
-        if track is None:
-            return None
-        try:
-            return self.c24tracks[track]
-        except IndexError:
-            self.log.warn("No track exists with index %d", track)
-            return None
-
-    def long_scribble(self, longtextallchars):
-        for track_number, track in enumerate(self.c24tracks):
-            if hasattr(track, 'procscribstrip'):
-                psn = track_number * ProCscribstrip.digits
-                piece = longtextallchars[psn:psn + ProCscribstrip.digits]
-                track.procscribstrip.c_d(['procscribstrip', 'long'], [piece])
-
-
-class ProCtrack(C24base):
-    """Track (channel strip) object to contain
-    one each of the bits found in each of the main tracks"""
-
-    def __init__(self, desk, track_number):
-        self.desk = desk
-        self.log = desk.log
-        self.track_number = track_number
-        self.mode = self.desk.mode
-        self.osctrack_number = track_number + 1
-
-        if self.track_number <= self.desk.channels:
-            self.c24fader = C24fader(self)
-            self.c24vpot = C24vpot(self)
-            self.c24vumeter = C24vumeter(self)
-            self.c24buttonled = C24buttonled(self.desk, self)
-            self.c24automode = C24automode(self.desk, self)
-
-        if self.track_number == 28:
-            self.c24vpot = C24jpot(self)
-            # Allow access from both 'virtual' track 28 AND desk object
-            # as it physically belongs there
-            self.desk.c24jpot = self.c24vpot
-
-        if self.track_number <= self.desk.channels:
-            self.procscribstrip = ProCscribstrip(self)
-
-
-class C24clock(C24base):
-    """Class to hold and convert clock display value representations"""
-
-    # 8 segments
-    # Displays seems to all be 0xf0, 0x13, 0x01 -- 0xf0, 0x13, 0x00 fro pro control
-    # 0xf0, 0x13, 0x01 = Displays
-    # 0x30, 0x19       = Clock display
-    # 0xFF             = DOT byte
-    # 0x00 x 8         = Display bytes
-    # 0xf7             = terminator
-    # seven segment display decoding, seven bits (128 not used)
-    # 631
-    # 4268421
-    # TTBBBT
-    # RR LLM
-
-    sevenseg = {
-        '0': 0b1111110,
-        '1': 0b0110000,
-        '2': 0b1101101,
-        '3': 0b1111001,
-        '4': 0b0110011,
-        '5': 0b1011011,
-        '6': 0b1011111,
-        '7': 0b1110000,
-        '8': 0b1111111,
-        '9': 0b1111011,
-        '-': 0b0000001,
-        ' ': 0,
-        'L': 0x0E,
-        'h': 0x17,
-        'o': 0x1D,
-        'b': 0x1F,
-        'H': 0x37,
-        'J': 0x38,
-        'Y': 0x3B,
-        'd': 0x3D,
-        'U': 0x3E,
-        'R': 0x46,
-        'F': 0x47,
-        'C': 0x4E,
-        'E': 0x4F,
-        'S': 0b1011011,
-        'P': 0x67,
-        'Z': 0b1101101,
-        'A': 0x77
-    }
-
-    clockbytes = [0xf0, 0x13, 0x00, 0x30, 0x09, 0x00, 0x01, ## changed 0x19 to 0x09 pro Control
-                  0x46, 0x4f, 0x67, 0x77, 0x4f, 0x46, 0x01, 0xf7]
-    ledbytes = [0xF0, 0x13, 0x00, 0x20, 0x09, 0x00, 0xF7] ## changed 0x19 to 0x09 for pro Control 
-
-    clockmodes = {
-        'time': {
-            'address': '/clock/time',
-            'dots': 0b0010101,
-            'LED': 0x40,
-            'formatter': '_fmt_time'
         },
-        'frames': {
-            'address': ' /clock/frames',
-            'dots': 0b0101010,
-            'LED': 0x20,
-            'formatter': '_fmt_time'
+        'Group': {
+            'toggle': True
         },
-        'samples': {
-            'address': ' /clock/samples',
-            'dots': 0x00,
-            'LED': 0x10,
-            'formatter': '_fmt_default'
+        'Names': {
+            'address': '/track/procscribstrip/name',
+            'default': True
         },
-        'beat': {
-            'address': ' /clock/beat',
-            'dots': 0b0010100,
-            'LED': 0x08,
-            'default': True,
-            'formatter': '_fmt_beat'
+        'Info': {
+            'address': '/track/procscribstrip/pan'
         }
     }
 
-    @staticmethod
-    def _xform_txt(text):
-        """transform the input text to seven segment encoding"""
-        psn = len(text) - 1
-        opr = 0
-        while opr < 8 and psn >= 0:
-            this_chr = C24clock.sevenseg.get(text[psn])
-            psn -= 1
-            if not this_chr is None:
-                yield this_chr
-                opr += 1
-        while opr < 8:
-            yield 0x00
-            opr += 1
+    def __init__(self, parent):
+        """ Build a base desk object with the _Readesk class
+        then apply the specifics for this device """
+        super(_ReaDesk, self).__init__(self, parent)
 
-    @staticmethod
-    def _fmt_beat(text):
-        """formatter for beat text"""
-        if text[-5] == '.':
-            return ''.join([text[:-4], ' ', text[-4:], ' '])
-        else:
-            return ''.join([text, ' '])
+        self.mapping_tree = procontrolmap.MAPPING_TREE_PROC
+        self.reabuttonled = ReaButtonLed(self, None)
 
-    @staticmethod
-    def _fmt_time(text):
-        """formatter for time text"""
-        return text[-13:]
+        self.modemgr = ModeManager(ProCdesk.deskmodes)
+        # Set up specifics for this device
+        self.channels = ProCdesk.real_channels
+        self.virtual_channels = ProCdesk.virtual_channels
 
-    @staticmethod
-    def _fmt_default(text):
-        return ''.join([text, ' '])
-
-    def __init__(self, desk):
-        self.log = desk.log
-        self.desk = desk
-        self.text = {}
-        self.op_list = None
-        self.byt_list = None
-        self.modemgr = ModeManager(self.clockmodes)
-        self.cmdbytes = self.initbytes(self.clockbytes)
-        self.ledbytes = self.initbytes(self.ledbytes)
-        self._set_things()
-
-    def __str__(self):
-        return 'Text:{}, CmdBytes:{}'.format(
-            self.text,
-            binascii.hexlify(self.cmdbytes)
-        )
-
-    def _set_things(self):
-        self.cmdbytes[5] = self.modemgr.get('dots')
-        self.ledbytes[5] = self.modemgr.get('LED')
-        self.formatter = getattr(self, self.modemgr.get('formatter'))
-
-    def _update(self):
-        # Apply whichever formatter function is indicated
-
-        optext = self.formatter(self.text[self.modemgr.mode])
-        # For now, display whatever mode we last gotfrom the daw
-        self.op_list = self._xform_txt(optext)
-        self.byt_list = list(self.op_list)
-        self.cmdbytes[6:14] = [byt for byt in self.byt_list]
-        self.desk.c24_client_send(self.cmdbytes)
-
-    def d_c(self, parsedcmd):
-        """Toggle the mode"""
-        if parsedcmd.get('Value') == 1.0:
-            self.modemgr.toggle_mode()
-            self._set_things()
-            self.desk.c24_client_send(self.ledbytes)
-            self._update()
-
-    def c_d(self, addrlist, stuff):
-        """Update from DAW text"""
-        mode = addrlist[2]
-        self.text[mode] = stuff[0]
-        # for speed we simply ignore any osc message that isn't
-        # for the current mode.
-        if mode == self.modemgr.mode:
-            self._update()
+        self.instantiate_tracks(self, ProCtrack)
 
 
-class C24vumeter(C24base):
-    """Class to hold and convert VU meter value representations"""
-
-    # 0xf0, 0x13, 0x01 = display 0xf0, 0x13, 0x01 for pro control
-    # 0x10 - VUs
-    # 0-23 Left
-    # 32-  Right
-    # 0x00 MSB
-    # 0x00 LSB
-    # 0xf7 terminator
-    meterscale = [
-        (0, 0),
-        (0, 1),
-        (0, 3),
-        (0, 7),
-        (0, 15),
-        (0, 31),
-        (0, 63),
-        (0, 127),
-        (1, 127),
-        (3, 127),
-        (7, 127),
-        (15, 127),
-        (31, 127),
-        (63, 127),
-        (127, 127)
-    ]
-
-    def __init__(self, track):
-        self.log = track.desk.log
-        self.track = track
-        self.vu_val = {'postfader': [(0, 0), (0, 0)], 'prefader': [
-            (0, 0), (0, 0)]}
-        self.mode = 'postfader'
-        self.cmdbytes = (c_ubyte * 8)()
-
-        for ind, byt in enumerate([0xf0, 0x13, 0x00, 0x10, track.track_number, 0x7f, 0x7f, 0xf7]): ## changed to 0x01 to 0x00 for pro control
-            self.cmdbytes[ind] = byt
-
-    def __str__(self):
-        return 'vu_val:{}, mode: {}, CmdBytes:{}'.format(
-            self.vu_val,
-            self.mode,
-            binascii.hexlify(self.cmdbytes)
-        )
-
-    def c_d(self, addrlist, stuff):
-        """Update from DAW value"""
-        spkr = int(addrlist[3])
-        val = stuff[0]
-        mode = 'postfader'
-
-        self.mode = mode
-        this_val = self.vu_val.get(mode)
-        if not this_val is None:
-            new_val = self._xform_vu(val)  # take a copy before change
-            if new_val != this_val[spkr]:
-                this_val[spkr] = new_val
-                # For now, display whatever mode we last gotfrom the daw
-                self.cmdbytes[4] = 32 * spkr + self.track.track_number
-                self.cmdbytes[5], self.cmdbytes[6] = this_val[0]
-                self.track.desk.c24_client_send(self.cmdbytes)
-
-    @staticmethod
-    def _xform_vu(val):
-        return C24vumeter.meterscale[int(val * 15)]
 
 
-class ProCscribstrip(C24base):
-    """Class to hold and convert scribblestrip value representations"""
+class ProCTrack(_ReaTrack):
+    """Track (channel strip) object to contain
+    one each of the elements found in each of the main
+    channel strips (tracks)
+    Spefically for Pro Control desk layout"""
 
-    # 0xf0, 0x13, 0x01 = Displays 0xf0, 0x13, 0x00 for pro control
-    # 0x40, 0x17       = Scribble strip
-    # 0x00             = track/strip
-    # 0x00, 0x00, 0x00, 0x00 = 4 'ascii' chars to display
-    # 0xf7             = terminator
-    
-    # f0 13 00 40 0e 00 68 61 73 20 61 20 20 20 f7
-    # f0 13 00 40 0f 00 64 69 61 6c 6f 67 20 20 f7
-    # f0 13 00 40 10 00 6f 6e 20 20 20 20 20 20 f7
-    
-    # f0 13 00 40 02 00 20 20 20 20 20 20 20 20 f7
-    # could be offset track numbers? 0x0e > 8
-    
+    def __init__(self, desk, track_number):
+        super(_ReaTrack, self).__init__(self, desk, track_number)
+
+        # super gives us the common layout, now we add Pro Control specifics
+
+        # Place a VU meter on virtual tracks above 8, these are bus VUs
+        if self.track_number >= self.desk.channels and self.track_number <= self.desk.channels + self.desk.busvus:
+            self.vumeter = ReaVumeter(self)
+
+        if self.track_number == 28:
+            self.vpot = ReaJpot(self)
+            #Allow access from both 'virtual' track 28 AND desk object
+            # as it physically belongs there
+            self.desk.jpot = self.vpot
+
+        if self.track_number <= self.desk.channels or self.track_number in range(
+                self.desk.channels,
+                self.channels + self.virtual_Channels
+        ):
+            self.scribstrip = ProCscribstrip(self)
+
+##### GOT TO HERE
+
+
+
+class ProCscribstrip(ReaBase):
+    """Class to hold and convert scribblestrip value representations
+    this version specific to the Control24 """
+
     digits = 8
+    defaultaddress = '/track/number'
+    bank = 0
 
     def __init__(self, track):
-        self.track = track
-        self.log = track.desk.log
-        self.mode = track.mode
-        defaulttext = '     {num:03d}'.format(num=self.track.track_number + 1)
-        self.dtext8ch = defaulttext
-        self.text = {'/track/number': defaulttext}
-        self.numbytes = ProCscribstrip.digits + 7;
-        self.cmdbytes = (c_ubyte * self.numbytes)()
-        self.timing_restore = float(DEFAULTS.get('timing_scribble_restore'))
-
-        self.restore_timer = threading.Timer(
-            self.timing_restore, self.restore_desk_display)
-
-        for ind, byt in enumerate(
-                [0xf0, 0x13, 0x00, 0x40, self.track.track_number,
-                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf7]):
-            self.cmdbytes[ind] = byt
-
-    def __str__(self):
-        return 'Channel:{}, Text:{}, CmdBytes:{}'.format(
-            self.track,
-            self.text,
-            binascii.hexlify(self.cmdbytes)
-        )
-
-    def set_current_display(self):
-
-        self.transform_text()
-        self.cmdbytes[6:ProCscribstrip.digits+6] = [ord(thischar) for thischar in self.dtext8ch]
-        trace(self.log, 'ProCscribstrip mode state: %s = %s',
-                       self.mode, self.dtext8ch)
-        self.track.desk.c24_client_send(self.cmdbytes)
-
-    def restore_desk_display(self):
-        """ To be called in a delayed fashion
-        to restore channel bar display to desk default"""
-        self.mode = self.track.desk.mode
-        self.set_current_display()
-
-    def transform_text(self):
-        dtext = self.text.get(self.mode)
-        if not dtext is None:
-            # The desk has neat characters with a dot and small numeral,
-            # Which is nice because 1 char is saved
-            # but only 1-9, so 0 (46) is left as a dot
-            dpp = dtext.find('.')
-            if dpp == 3:
-                nco = ord(dtext[dpp + 1])
-                if nco != 48:
-                    little = chr(nco - 26)
-                    dtext = dtext[:dpp] + little + dtext[dpp + 1:]
-            fmtstring = '{txt: <'+str(ProCscribstrip.digits)+'}'
-            self.dtext8ch = fmtstring.format(txt=dtext[:ProCscribstrip.digits])
-        else:
-            self.dtext8ch = ' ' * ProCscribstrip.digits
-
-    def c_d(self, addrlist, stuff):
-        """Update from DAW text"""
-        address = '/'.join(addrlist)
-        textvalue = stuff[0]
-        self.text[address] = textvalue
-        if address == self.mode:
-            self.set_current_display()
-        else:
-            self.mode = address
-            self.set_current_display()
-            if self.restore_timer.isAlive:
-                self.restore_timer.cancel()
-            self.restore_timer = threading.Timer(
-                self.timing_restore, self.restore_desk_display)
-            self.restore_timer.start()
+        super(_ReaScribStrip, self).__init__(
+            self,
+            track,
+            ProCscribstrip.digits,
+            ProCscribstrip.bank,
+            ProCscribstrip.defaultaddress)
 
 
-class C24jpot(C24base):
+
+class C24jpot(ReaBase):
     # 'DirectionByte': 2,1
     # 'DirectionByteMask': 0x40,
     # 'ValueByte': 3
@@ -767,7 +257,7 @@ class C24jpot(C24base):
             self.track.desk.osc_client_send(msg)
 
 
-class C24vpot(C24base):
+class C24vpot(ReaBase):
     # 'DirectionByte': 2,
     # 'DirectionByteMask': 0x40,
     # 'ValueByte': 3
@@ -897,9 +387,9 @@ class C24vpot(C24base):
         return adj
 
 
-class C24fader(C24base):
+class C24fader(ReaBase):
     """Class to hold and convert fader value representations"""
-    faderscale = C24base.calc_faderscale()
+    faderscale = ReaBase.calc_faderscale()
 
     def __init__(self, track):
         self.log = track.desk.log
@@ -985,7 +475,7 @@ class C24fader(C24base):
         gain_tenbits = int(gain_from_daw * FADER_RANGE) - 1
         if gain_tenbits < 0:
             gain_tenbits = 0
-        tenb = C24base.tenbits(gain_tenbits)
+        tenb = ReaBase.tenbits(gain_tenbits)
         return c_ubyte(tenb[0]), c_ubyte(tenb[1])
 
     @staticmethod
@@ -995,11 +485,11 @@ class C24fader(C24base):
         return C24fader.faderscale[volume_from_desk]
 
 
-class C24buttonled(C24base):
+class C24buttonled(ReaBase):
     """ class to tidy up chunk of code from main c_d method
     for turning on/off button LED's """
     mapping_osc = {}
-    C24base.walk(MAPPING_TREE_PROC.get(0x90).get('Children'),
+    ReaBase.walk(MAPPING_TREE_PROC.get(0x90).get('Children'),
                  '/button', [0x90, 0x00, 0x00], 1, None, mapping_osc)
 
     def __init__(self, desk, track):
@@ -1037,7 +527,7 @@ class C24buttonled(C24base):
             self.log.warn("OSCServer LED not found: %s %s", addr, str(val))
 
 
-class C24automode(C24base):
+class C24automode(ReaBase):
     """ class to deal with the automation toggle on a track
     with the various LEDs and modes exchanged between DAW and desk"""
     automodes = {
@@ -1609,6 +1099,6 @@ def main():
 
 
 if __name__ == '__main__':
-    from control24common import start_logging
+    from ReaCommon import start_logging
 
     main()

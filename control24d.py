@@ -16,8 +16,8 @@ from optparse import OptionError
 
 import pcap
 
-from control24common import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
-                             opts_common, start_logging, tick, SIGNALS)
+from ReaCommon import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
+                       opts_common, start_logging, tick, SIGNALS)
 
 '''
     This file is part of ReaControl24. Control Surface Middleware.

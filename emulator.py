@@ -2,7 +2,7 @@ import pcap
 import threading
 import time
 
-from control24common import (NetworkHelper, hexl, COMMANDS)
+from ReaCommon import (NetworkHelper, hexl, COMMANDS)
 
 from ReaControl import (c24packet_factory, C24BcastData, C24Header, EthHeader, MacAddress)
 

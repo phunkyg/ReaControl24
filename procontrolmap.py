@@ -229,22 +229,22 @@ MAPPING_TREE_PROC = {
                             0x23: {
                                 'Address': 'ShiftAdd',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x24: {
                                 'Address': 'OptionAltAll',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x25: {
                                 'Address': 'ControlClutch',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x26: {
                                 'Address': 'CommandCtl',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                         }
                     },
@@ -276,7 +276,7 @@ MAPPING_TREE_PROC = {
                             0x00: {  # oddly placed, clock mode
                                 'Address': 'CounterMode',
                                 'Zone': 'Counter',
-                                'CmdClass': 'C24clock'
+                                'CmdClass': 'ReaClock'
                             },
                             0x01: {
                                 'Address': 'Info',

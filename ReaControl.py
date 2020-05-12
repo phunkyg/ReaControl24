@@ -19,9 +19,9 @@ from optparse import OptionError
 
 import pcap
 
-from control24common import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
-                             opts_common, tick, fix_ownership, SIGNALS,
-                             start_logging, trace)
+from ReaCommon import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
+                       opts_common, tick, fix_ownership, SIGNALS,
+                       start_logging, trace)
 
 #--MULTI can we import the client scripts?
 import control24osc as control24_client
