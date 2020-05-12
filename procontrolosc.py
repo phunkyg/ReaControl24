@@ -17,7 +17,7 @@ from optparse import OptionError
 
 import OSC
 
-from ReaCommon import (ModeManager, ReaBase, ReaNav, ReaModifiers, _ReaDesk, _ReaTrack, ReaButtonLed,
+from ReaCommon import (ModeManager, ReaBase, ReaNav, ReaModifiers, _ReaDesk, _ReaTrack, _ReaScribStrip, ReaButtonLed,
                        DEFAULTS, FADER_RANGE, NetworkHelper,
                        opts_common, tick, SIGNALS, start_logging, trace)
 import procontrolmap
@@ -147,11 +147,10 @@ class ProCTrack(_ReaTrack):
         ):
             self.scribstrip = ProCscribstrip(self)
 
-##### GOT TO HERE
 
 
 
-class ProCscribstrip(ReaBase):
+class ProCscribstrip(_ReaScribStrip):
     """Class to hold and convert scribblestrip value representations
     this version specific to the Control24 """
 
@@ -167,6 +166,7 @@ class ProCscribstrip(ReaBase):
             ProCscribstrip.bank,
             ProCscribstrip.defaultaddress)
 
+##### GOT TO HERE
 
 
 class C24jpot(ReaBase):

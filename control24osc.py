@@ -17,7 +17,7 @@ from optparse import OptionError
 
 import OSC
 
-from ReaCommon import (ModeManager, ReaBase, ReaNav, ReaModifiers, _ReaDesk, _ReaTrack, ReaButtonLed,
+from ReaCommon import (ModeManager, ReaBase, ReaNav, ReaModifiers, _ReaDesk, _ReaTrack, _ReaScribStrip, ReaButtonLed,
                        DEFAULTS, FADER_RANGE, NetworkHelper,
                        opts_common, tick, SIGNALS, start_logging)
 import control24map
@@ -144,7 +144,7 @@ class C24Track(_ReaTrack):
 
 
 
-class C24scribstrip(ReaBase):
+class C24scribstrip(_ReaScribStrip):
     """Class to hold and convert scribblestrip value representations
     this version specific to the Control24 """
 
