@@ -40,7 +40,7 @@ if sys.platform.startswith('win'):
 DEFAULTS = {
     'ip': '0.0.0.0',
     'daemon': 9124,
-    'control24osc': 9124,
+    'oscport': 9124,
     'oscDaw': 9125,
     'auth': 'be_in-control',
     'loglevel': 'INFO',
@@ -103,6 +103,7 @@ def start_logging(name, logdir, debug=False):
     # Get the root logger and set up outputs for stderr
     # and a log file in the CWD
     if not os.path.exists(logdir):
+        original_umask = None
         try:
             original_umask = os.umask(0)
             os.makedirs(logdir, 0o666)
@@ -117,8 +118,8 @@ def start_logging(name, logdir, debug=False):
     logging.addLevelName(5, "TRACE")
     logging.trace = trace
     logging.Logger.trace = trace
-    isTrace = DEFAULTS.get('loglevel') == "TRACE"
-    if debug and not isTrace:
+    is_trace = DEFAULTS.get('loglevel') == "TRACE"
+    if debug and not is_trace:
         root_logger.setLevel(logging.DEBUG)
     else:
         root_logger.setLevel(DEFAULTS.get('loglevel'))
@@ -167,7 +168,8 @@ def opts_common(desc):
 def findintree(obj, key):
     # TODO see if this will save having to
     # code button addresses twice
-    if key in obj: return obj[key]
+    if key in obj:
+        return obj[key]
     for _, v in obj.items():
         if isinstance(v, dict):
             item = findintree(v, key)
@@ -305,7 +307,8 @@ class NetworkHelper(object):
     @staticmethod
     def is_valid_ipstr(ipstr):
         """check if a string conforms to the expected ipv4 and port format"""
-        pat = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):[0-9]+$"
+        pat = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.)" +\
+              "{3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):[0-9]+$"
         return bool(re.findall(pat, ipstr))
 
 
@@ -414,7 +417,7 @@ class ReaBase(object):
     def tenbits(num):
         """Return 7 bits in one byte and 3 in the next for an integer provided"""
         num = num & 0x3FF
-        return (num >> 3, (num & 7) << 4)
+        return num >> 3, (num & 7) << 4
 
     @staticmethod
     def calc_faderscale():
@@ -438,7 +441,7 @@ class ReaBase(object):
                 tbyt = item.get('TrackByte')
             led = item.get('LED')
             tog = item.get('Toggle')
-            if not kids is None:
+            if kids is not None:
                 kidbyts = list(mybyts)
                 kidbyts[cbyt] = key
                 ReaBase.walk(kids, path + '/' + addr, kidbyts, kbyt, tbyt, outp)
@@ -451,7 +454,7 @@ class ReaBase(object):
                     }
                     if tog:
                         opr['Toggle'] = tog
-                    if not tbyt is None:
+                    if tbyt is not None:
                         opr['TrackByte'] = tbyt
                     outp[path + '/' + addr] = opr
 
@@ -846,7 +849,7 @@ class _ReaDesk(ReaBase):
 
     def __init__(
             self,
-            parent  # type: ReaOscSession
+            parent
     ):
         """ Base init only builds common elements """
         # passthrough methods
@@ -862,24 +865,24 @@ class _ReaDesk(ReaBase):
 
         """ Abstract Properties """
         # The mapping tree for this device
-        self.mapping_tree = None  # type: Dict
+        self.mapping_tree = None
         # This desk will need a ModeManager object but will have a specific
         # set of deskmodes depending on the device
-        self.modemgr = None  # type: ModeManager
+        self.modemgr = None
         # How many channel strips does this device have
-        self.channels = None  # type: int
+        self.channels = None
         # How many viruital channel device have in the address space above real channels
-        self.virtual_channels = None  # type: int
+        self.virtual_channels = None
         # How manuy BUS VU led banks does this device have
-        self.busvus = None  # type: int
+        self.busvus = None
         # List of Track objects
-        self.tracks = []  # type: List[ReaTrack]
+        self.tracks = []
         # Button LED class depends on the mapping tree so must be done by inheritor
-        self.reabuttonled = None  # type: ReaButtonLed
+        self.reabuttonled = None
 
     def set_mode(self, mode):
         """set the global desk mode"""
-        self.debug('Desk mode set: %s', mode)
+        self.log.debug('Desk mode set: %s', mode)
         self.modemgr.set_mode(mode)
         for track in self.tracks:
             track.modemgr.set_mode(mode)
@@ -907,7 +910,7 @@ class _ReaDesk(ReaBase):
                 piece = longtext[psn:psn + scrib.size]
                 scrib.c_d(['rea4scribstrip', 'long'], [piece])
 
-    def instantiate_tracks(self, track_class, number):
+    def instantiate_tracks(self, track_class):
         """Build the tracks list out of the supplied class
         and to the length specified"""
         # Set up the child track objects
@@ -929,11 +932,14 @@ class _ReaTrack(ReaBase):
 
         # Only channel strip setup common to all devices goes here
         if self.track_number < self.desk.channels:
-            self.fader = ReaFader(self)
-            self.vpot = ReaVpot(self)
             self.vumeter = ReaVumeter(self)
             self.buttonled = ReaButtonLed(self.desk, self)
-            self.automode = ReaAutoMode(self.desk, self)
+
+        if self.track_number == 28:
+            self.vpot = ReaJpot(self)
+            # Allow access from both 'virtual' track 28 AND desk object
+            # as it physically belongs there
+            self.desk.jpot = self.vpot
 
 
 class _ReaScribStrip(ReaBase):
@@ -941,6 +947,7 @@ class _ReaScribStrip(ReaBase):
     This abstract class to hold common elements but specifics
     like number of chars and multiple banks belong to the
     device specific classes"""
+
     # TODO original control 24 notes - need updating
     # 0xf0, 0x13, 0x01 = Displays
     # 0x40      = Scribble strip
@@ -952,15 +959,15 @@ class _ReaScribStrip(ReaBase):
     def __init__(self, track, digits, bank, defaultaddress='/track/number'):
         self.track = track
         self.log = track.desk.log
+        self.restore_timer = None
         self.digits = digits
         self.bank = bank
         self.mode = track.modemgr.get_data()
         defaulttext = '{num:02d}'.format(num=self.track.osctrack_number)
         self.dtext = defaulttext
 
-        self.numbytes = self.digits + 7;
+        self.numbytes = self.digits + 7
         self.cmdbytes = (c_ubyte * self.numbytes)()
-
 
         self.last_update = time.time()
 
@@ -997,9 +1004,9 @@ class _ReaScribStrip(ReaBase):
         """ Given the current state do the text transform
         and send the data to the desk scribble strip """
         self.transform_text()
-        self.cmdbytes[6:self.digits+6] = [ord(thischar) for thischar in self.dtext]
+        self.cmdbytes[6:self.digits + 6] = [ord(thischar) for thischar in self.dtext]
         trace(self.log, 'ScribbleStrip mode state: %s = %s',
-                self.mode, self.dtext)
+              self.mode, self.dtext)
         # Trigger the update to be sent from the daemon to the desk
         self.track.desk.daemon_client_send(self.cmdbytes)
 
@@ -1026,7 +1033,7 @@ class _ReaScribStrip(ReaBase):
                 if nco != 48:
                     little = chr(nco - 26)
                     dtext = dtext[:dpp] + little + dtext[dpp + 1:]
-            fmtstring = '{txt: <'+str(self.digits)+'}'
+            fmtstring = '{txt: <' + str(self.digits) + '}'
             self.dtext = fmtstring.format(txt=dtext[:self.digits])
         else:
             # send all spaces to blank it out
@@ -1052,11 +1059,13 @@ class _ReaScribStrip(ReaBase):
             self.make_timer()
             self.restore_timer.start()
 
+
 class ReaJpot(ReaBase):
     """Class for Jog wheel, a special type of vpot"""
-    #'DirectionByte': 2,1
-    #'DirectionByteMask': 0x40,
-    #'ValueByte': 3
+
+    # 'DirectionByte': 2,1
+    # 'DirectionByteMask': 0x40,
+    # 'ValueByte': 3
 
     def __init__(self, track):
         self.log = track.desk.log
@@ -1068,11 +1077,11 @@ class ReaJpot(ReaBase):
         self.out = 0
         self.scrubout = 0
         # Make the class modeful
-        #TODO use the mode manager class
+        # TODO use the mode manager class
         self.mode = None
         self.modes = {
             'Scrub': {'address': '/scrub', 'default': True},
-            'Shuttle': {'address' : '/playrate/rotary'}
+            'Shuttle': {'address': '/playrate/rotary'}
         }
         for key, value in self.modes.iteritems():
             value['msg'] = OSC.OSCMessage(value['address'])
@@ -1122,7 +1131,7 @@ class ReaJpot(ReaBase):
 
             self.velocity = self.cmdbytes[3]
             self.out = 0.5 + (float(self.val - 64) * float(0.05))
-            #self.out += float(self.val - 64) * 0.00001
+            # self.out += float(self.val - 64) * 0.00001
 
             currmode = self.modes.get(self.mode)
             msg = currmode.get('msg')
@@ -1139,42 +1148,42 @@ class ReaJpot(ReaBase):
 
 class _ReaVpot(ReaBase):
     """Class for the Virtual Pots"""
-    #'DirectionByte': 2,
-    #'DirectionByteMask': 0x40,
-    #'ValueByte': 3
+    # 'DirectionByte': 2,
+    # 'DirectionByteMask': 0x40,
+    # 'ValueByte': 3
     scale_dot = [
-        (0x40, 0x00, 0x00), # 1 L
-        (0x00, 0x40, 0x00), # 2
-        (0x00, 0x20, 0x00), # 3
-        (0x00, 0x10, 0x00), # 4
-        (0x00, 0x08, 0x00), # 5
-        (0x00, 0x04, 0x00), # 6
-        (0x00, 0x02, 0x00), # 7
-        (0x00, 0x01, 0x00), # 8 C
-        (0x00, 0x00, 0x40), # 9
-        (0x00, 0x00, 0x20), # 10
-        (0x00, 0x00, 0x10), # 11
-        (0x00, 0x00, 0x08), # 12
-        (0x00, 0x00, 0x04), # 13
-        (0x00, 0x00, 0x02), # 14
-        (0x00, 0x00, 0x01), # 15 R
+        (0x40, 0x00, 0x00),  # 1 L
+        (0x00, 0x40, 0x00),  # 2
+        (0x00, 0x20, 0x00),  # 3
+        (0x00, 0x10, 0x00),  # 4
+        (0x00, 0x08, 0x00),  # 5
+        (0x00, 0x04, 0x00),  # 6
+        (0x00, 0x02, 0x00),  # 7
+        (0x00, 0x01, 0x00),  # 8 C
+        (0x00, 0x00, 0x40),  # 9
+        (0x00, 0x00, 0x20),  # 10
+        (0x00, 0x00, 0x10),  # 11
+        (0x00, 0x00, 0x08),  # 12
+        (0x00, 0x00, 0x04),  # 13
+        (0x00, 0x00, 0x02),  # 14
+        (0x00, 0x00, 0x01),  # 15 R
     ]
     scale_fill = [
-        (0x40, 0x7F, 0x00), # 1 L
-        (0x00, 0x7F, 0x00), # 2
-        (0x00, 0x3F, 0x00), # 3
-        (0x00, 0x1F, 0x00), # 4
-        (0x00, 0x0F, 0x00), # 5
-        (0x00, 0x07, 0x00), # 6
-        (0x00, 0x03, 0x00), # 7
-        (0x00, 0x01, 0x00), # 8 C
-        (0x00, 0x01, 0x40), # 9
-        (0x00, 0x01, 0x60), # 10
-        (0x00, 0x01, 0x70), # 11
-        (0x00, 0x01, 0x78), # 12
-        (0x00, 0x01, 0x7C), # 13
-        (0x00, 0x01, 0x7E), # 14
-        (0x00, 0x01, 0x7F), # 15 R
+        (0x40, 0x7F, 0x00),  # 1 L
+        (0x00, 0x7F, 0x00),  # 2
+        (0x00, 0x3F, 0x00),  # 3
+        (0x00, 0x1F, 0x00),  # 4
+        (0x00, 0x0F, 0x00),  # 5
+        (0x00, 0x07, 0x00),  # 6
+        (0x00, 0x03, 0x00),  # 7
+        (0x00, 0x01, 0x00),  # 8 C
+        (0x00, 0x01, 0x40),  # 9
+        (0x00, 0x01, 0x60),  # 10
+        (0x00, 0x01, 0x70),  # 11
+        (0x00, 0x01, 0x78),  # 12
+        (0x00, 0x01, 0x7C),  # 13
+        (0x00, 0x01, 0x7E),  # 14
+        (0x00, 0x01, 0x7F),  # 15 R
     ]
     coarse = float(0.03125)
     fine = float(0.005)
@@ -1182,7 +1191,7 @@ class _ReaVpot(ReaBase):
     def __init__(self, track, address='/track/vpot/{}'):
         self.log = track.desk.log
         self.track = track
-        #TODO allow mode switch between dot and fill display
+        # TODO allow mode switch between dot and fill display
         self.scale = _ReaVpot.scale_fill
         self.pang = 0
         self.panv = 0,
@@ -1268,10 +1277,9 @@ class _ReaVpot(ReaBase):
         return adj
 
 
-
 class _ReaFader(ReaBase):
     """Class to hold and convert fader value representations"""
-    #TODO move this into this class
+    # TODO move this into this class
     faderscale = ReaBase.calc_faderscale()
 
     def __init__(self, track, address='/track/fader/{}'):
@@ -1319,16 +1327,16 @@ class _ReaFader(ReaBase):
         t_in = ord(cbytes[1])
         if t_in != self.track.track_number:
             self.log.error('Track from Command Bytes does not match Track object Index: %s %s',
-                      binascii.hexlify(cbytes), self)
+                           binascii.hexlify(cbytes), self)
             return None
-        #TODO tidy up here
+        # TODO tidy up here
         if len(cbytes) < 2:
             self.log.warn('ReaFader bad signature %s',
-                    parsedcmd)
+                          parsedcmd)
             return None
         if cbytes[3] == '\x00':
             self.log.warn('ReaFader bad signature %s',
-                     parsedcmd)
+                          parsedcmd)
             return None
         self.cmdbytes[2] = ord(cbytes[2])
         self.cmdbytes[4] = ord(cbytes[4])
@@ -1365,10 +1373,10 @@ class _ReaFader(ReaBase):
         volume_from_desk = (fdr.cmdbytes[2], fdr.cmdbytes[4])
         return _ReaFader.faderscale[volume_from_desk]
 
+
 class Reabuttonled(ReaBase):
     """ class to tidy up chunk of code from main c_d method
     for turning on/off button LED's """
-
 
     def __init__(self, desk, track):
         self.log = desk.log
@@ -1376,11 +1384,11 @@ class Reabuttonled(ReaBase):
         self.track = track
         self.cmdbytes = (c_ubyte * 3)()
         self.states = {}
-        #TODO Command bytes in midi always have msb set
+        # TODO Command bytes in midi always have msb set
         # so this isn't really required
         self.mapping_osc = {}
-        self.ReaBase.walk(self.desk.mapping_tree.get(0x90).get('Children'),
-                 '/button', [0x90, 0x00, 0x00], 1, None, self.mapping_osc)
+        ReaBase.walk(self.desk.mapping_tree.get(0x90).get('Children'),
+                          '/button', [0x90, 0x00, 0x00], 1, None, self.mapping_osc)
 
     def c_d(self, addrlist, stuff):
         """computer to desk handler"""
@@ -1443,11 +1451,11 @@ class _ReaAutomode(ReaBase):
     """ class to deal with the automation toggle on a track
     with the various LEDs and modes exchanged between DAW and desk"""
     automodes = {
-        'write' : {'state': False, 'cmd': 0x40},
-        'touch' : {'state': False, 'cmd': 0x20},
-        'latch' : {'state': False, 'cmd': 0x10},
-        'trim'  : {'state': False, 'cmd': 0x08},
-        'read'  : {'state': False, 'cmd': 0x04}
+        'write': {'state': False, 'cmd': 0x40},
+        'touch': {'state': False, 'cmd': 0x20},
+        'latch': {'state': False, 'cmd': 0x10},
+        'trim': {'state': False, 'cmd': 0x08},
+        'read': {'state': False, 'cmd': 0x04}
     }
 
     def __init__(self, desk, track, address='/track/automode/{}/{}'):
@@ -1507,7 +1515,7 @@ class _ReaAutomode(ReaBase):
         addr = self.address.format(
             mode_in,
             self.track.osctrack_number
-            )
+        )
         msg = OSC.OSCMessage(addr)
         msg.append('{}.0'.format(onoff * 1))
         self.track.desk.osc_client_send(msg)
@@ -1530,11 +1538,9 @@ class _ReaAutomode(ReaBase):
         self.log.debug('AUTO LED: %s', self)
 
 
-
-
-
 class _ReaOscsession(object):
     """Class for the entire client session"""
+
     # Extract a list of first level command bytes from the mapping tree
     # To use for splitting up multiplexed command sequences
 
@@ -1547,7 +1553,7 @@ class _ReaOscsession(object):
                 current.append(item)
                 yield current
                 current = []
-            #TODO made the change here need to confirm
+            # TODO made the change here need to confirm
             elif ord(item) & 0x80 == 0x80 and not current == []:
                 yield current
                 current = [item]
@@ -1578,9 +1584,9 @@ class _ReaOscsession(object):
         parsedcmd["lkpbytes"] = []
         this_byte_num = 0
         this_byte = ord(cmdbytes[this_byte_num])
-        lkp = self.mapping_tree
+        lkp = self.desk.mapping_tree
         level = 0
-        while not this_byte_num is None:
+        while this_byte_num is not None:
             parsedcmd["lkpbytes"].append(this_byte)
             level = level + 1
             lkp = lkp.get(this_byte)
@@ -1590,7 +1596,7 @@ class _ReaOscsession(object):
                     level,
                     this_byte,
                     cmdbytes
-                    )
+                )
                 return None
             # Copy this level's dict entries but not the children subdict. i.e. flatten/accumulate
             if "Address" in lkp:
@@ -1682,7 +1688,7 @@ class _ReaOscsession(object):
 
                 # CLASS based Desk-Daw, where complex logic is needed so encap. in class
                 cmd_class = parsed_cmd.get('CmdClass')
-                if not cmd_class is None:
+                if cmd_class is not None:
                     # Most class handlers will be within a track
                     # but if not then try the desk object
                     try:
@@ -1691,7 +1697,7 @@ class _ReaOscsession(object):
                         inst.d_c(parsed_cmd)
                     except AttributeError:
                         self.log.warn(
-                            'Looking for mapped cmd_class but it is not found. The map is incorrect. Track: %d Class: %s',
+                            'Looking for mapped cmd_class but not found. The map is incorrect. Track: %d Class: %s',
                             track_number,
                             cmd_class
                         )
@@ -1712,7 +1718,7 @@ class _ReaOscsession(object):
     def _daw_to_desk(self, addr, tags, stuff, source):
         """message handler for the OSC listener"""
         self.log.debug("OSC Listener received Message: %s %s [%s] %s",
-                  source, addr, tags, str(stuff))
+                       source, addr, tags, str(stuff))
         if self.osc_listener_last is None:
             self.osc_listener_last = source
         elif self.osc_listener_last != source:
@@ -1739,7 +1745,7 @@ class _ReaOscsession(object):
             cmdinst = self.desk.clock
         elif addrlist[1] == 'button':
             # button LEDs
-            if not track is None:
+            if track is not None:
                 cmdinst = track.reabuttonled
             else:
                 cmdinst = self.desk.reabuttonled
@@ -1780,7 +1786,7 @@ class _ReaOscsession(object):
             # Main Loop when connected
             while self.daemon_client_is_connected:
                 self.log.debug('multiprocess Client waiting for data: %s',
-                          self.daemon_client.fileno())
+                               self.daemon_client.fileno())
                 try:
                     datarecv = self.daemon_client.recv_bytes()
                     self._desk_to_daw(datarecv)
@@ -1815,7 +1821,7 @@ class _ReaOscsession(object):
                     self.log.debug("OSC shutdown error", exc_info=True)
                 else:
                     self.log.error("OSC Listener error", exc_info=True)
-                #raise
+                # raise
             self.log.debug('OSC Listener stopped')
             time.sleep(TIMING_OSC_LISTENER_RESTART)
         self.log.debug('OSC listener thread finished')
@@ -1833,12 +1839,12 @@ class _ReaOscsession(object):
                 time.sleep(TIMING_WAIT_OSC_LISTENER)
             try:
                 self.log.debug('Starting OSC Client connecting to %s',
-                          self.connect)
+                               self.connect)
                 self.osc_client.connect(self.connect)
                 self.osc_client_is_connected = True
             except Exception:
                 self.log.error("OSC Client connection error",
-                          exc_info=True)
+                               exc_info=True)
                 self.osc_client_is_connected = False
                 time.sleep(TIMING_OSC_CLIENT_RESTART)
             while self.osc_client_is_connected and not self.is_closing:
@@ -1873,7 +1879,7 @@ class _ReaOscsession(object):
                 self.osc_client.send(osc_msg)
             except:
                 self.log.error("Error sending OSC msg:",
-                          exc_info=sys.exc_info())
+                               exc_info=sys.exc_info())
                 self._disconnect_osc_client()
         else:
             self.log.debug(
@@ -1884,7 +1890,7 @@ class _ReaOscsession(object):
         are wrapped in a connection check"""
         if self.daemon_client_is_connected:
             trace(self.log, "multiprocess send: %s",
-                      binascii.hexlify(cmdbytes))
+                  binascii.hexlify(cmdbytes))
             self.daemon_client.send_bytes(cmdbytes)
 
     # session housekeeping methods
@@ -1962,3 +1968,66 @@ class _ReaOscsession(object):
         self.close()
 
 
+def signal_handler(sig, stackframe):
+    """Exit the client if a signal is received"""
+    signals_dict = dict((getattr(signal, n), n)
+                        for n in dir(signal) if n.startswith('SIG') and '_' not in n)
+    # log.info("procontrolosc shutting down as %s received.", signals_dict[sig])
+    if not SESSION is None:
+        SESSION.close()
+    sys.exit(0)
+
+
+# main program if run in standalone mode
+def main(sessionclass):
+    """Main function declares options and initialisation routine for OSC client."""
+    global SESSION
+
+    # Find networks on this machine, to determine good defaults
+    # and help verify options
+    networks = NetworkHelper()
+
+    default_ip = networks.get_default()[1]
+
+    # program options
+    oprs = opts_common("ReaControl OSC client")
+    default_daemon = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('daemon'))
+    oprs.add_option(
+        "-s",
+        "--server",
+        dest="server",
+        help="connect to daemon at given host:port. default %s" % default_daemon)
+    default_osc_client = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscport'))
+    oprs.add_option(
+        "-l",
+        "--listen",
+        dest="listen",
+        help="accept OSC client from DAW at host:port. default %s" % default_osc_client)
+    default_daw = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscDaw'))
+    oprs.add_option(
+        "-c",
+        "--connect",
+        dest="connect",
+        help="Connect to DAW OSC server at host:port. default %s" % default_daw)
+
+    oprs.set_defaults(listen=default_osc_client,
+                      server=default_daemon, connect=default_daw)
+
+    # Parse and verify options
+    # TODO move to argparse and use that to verify
+    (opts, _) = oprs.parse_args()
+    if not networks.verify_ip(opts.listen.split(':')[0]):
+        raise optparse.OptionError('No network has the IP address specified.', 'listen')
+
+    # Set up Interrupt signal handler so process can close cleanly
+    for sig in SIGNALS:
+        signal.signal(sig, signal_handler)
+
+    # Build the session
+    if SESSION is None:
+        # start logging if main
+        SESSION = sessionclass(opts, networks)
+
+    # Main Loop once session initiated
+    while True:
+        time.sleep(TIMING_MAIN_LOOP)
