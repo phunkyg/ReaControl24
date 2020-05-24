@@ -11,6 +11,7 @@ import signal
 import re
 import threading
 from ctypes import c_ubyte
+from multiprocessing.connection import Client
 
 import netifaces
 import OSC
@@ -1050,3 +1051,914 @@ class _ReaScribStrip(ReaBase):
                 self.restore_timer.cancel()
             self.make_timer()
             self.restore_timer.start()
+
+class ReaJpot(ReaBase):
+    """Class for Jog wheel, a special type of vpot"""
+    #'DirectionByte': 2,1
+    #'DirectionByteMask': 0x40,
+    #'ValueByte': 3
+
+    def __init__(self, track):
+        self.log = track.desk.log
+        self.track = track
+        self.cmdbytes = (c_ubyte * 30)()
+        self.val = 0
+        self.dir = 0
+        self.velocity = 0
+        self.out = 0
+        self.scrubout = 0
+        # Make the class modeful
+        #TODO use the mode manager class
+        self.mode = None
+        self.modes = {
+            'Scrub': {'address': '/scrub', 'default': True},
+            'Shuttle': {'address' : '/playrate/rotary'}
+        }
+        for key, value in self.modes.iteritems():
+            value['msg'] = OSC.OSCMessage(value['address'])
+            if value.get('default'):
+                self.mode = key
+
+    def __str__(self):
+        return 'JOGWHEEL Channel:{}, dir:{} val:{} vel: {} out:{} cmdbytes:{}'.format(
+            self.track.track_number,
+            self.dir,
+            self.val,
+            self.velocity,
+            self.out,
+            binascii.hexlify(self.cmdbytes)
+        )
+
+    def d_c(self, parsedcmd):
+        """desk to computer, switch by button or jog input"""
+        addrs = parsedcmd.get('addresses')
+        if addrs[1] == "button":
+            self._update_from_button(parsedcmd, addrs)
+        else:
+            self._update_from_move(parsedcmd)
+
+    def _update_from_button(self, parsedcmd, addrs):
+        if parsedcmd.get('Value') == 1:
+            button = addrs[-1]
+            if self.modes.has_key(button):
+                self.mode = button
+            else:
+                self.log.warn('C24jpot no mode for button %s', button)
+
+    def _update_from_move(self, parsedcmd):
+        """Update from desk command byte list"""
+        cbytes = parsedcmd.get('cmdbytes')
+        if cbytes:
+            for ind, byt in enumerate(cbytes):
+                self.cmdbytes[ind] = ord(byt)
+
+            self.val = self.cmdbytes[2]
+            if self.val > 64:
+                self.dir = 1
+                self.scrubout = 1
+            else:
+                self.dir = -1
+                self.scrubout = 0
+
+            self.velocity = self.cmdbytes[3]
+            self.out = 0.5 + (float(self.val - 64) * float(0.05))
+            #self.out += float(self.val - 64) * 0.00001
+
+            currmode = self.modes.get(self.mode)
+            msg = currmode.get('msg')
+            msg.clearData()
+
+            if self.mode == 'Scrub':
+                msg.append(self.scrubout)
+            else:
+                msg.append(self.out)
+
+            self.log.debug('%s', self)
+            self.track.desk.osc_client_send(msg)
+
+
+class _ReaVpot(ReaBase):
+    """Class for the Virtual Pots"""
+    #'DirectionByte': 2,
+    #'DirectionByteMask': 0x40,
+    #'ValueByte': 3
+    scale_dot = [
+        (0x40, 0x00, 0x00), # 1 L
+        (0x00, 0x40, 0x00), # 2
+        (0x00, 0x20, 0x00), # 3
+        (0x00, 0x10, 0x00), # 4
+        (0x00, 0x08, 0x00), # 5
+        (0x00, 0x04, 0x00), # 6
+        (0x00, 0x02, 0x00), # 7
+        (0x00, 0x01, 0x00), # 8 C
+        (0x00, 0x00, 0x40), # 9
+        (0x00, 0x00, 0x20), # 10
+        (0x00, 0x00, 0x10), # 11
+        (0x00, 0x00, 0x08), # 12
+        (0x00, 0x00, 0x04), # 13
+        (0x00, 0x00, 0x02), # 14
+        (0x00, 0x00, 0x01), # 15 R
+    ]
+    scale_fill = [
+        (0x40, 0x7F, 0x00), # 1 L
+        (0x00, 0x7F, 0x00), # 2
+        (0x00, 0x3F, 0x00), # 3
+        (0x00, 0x1F, 0x00), # 4
+        (0x00, 0x0F, 0x00), # 5
+        (0x00, 0x07, 0x00), # 6
+        (0x00, 0x03, 0x00), # 7
+        (0x00, 0x01, 0x00), # 8 C
+        (0x00, 0x01, 0x40), # 9
+        (0x00, 0x01, 0x60), # 10
+        (0x00, 0x01, 0x70), # 11
+        (0x00, 0x01, 0x78), # 12
+        (0x00, 0x01, 0x7C), # 13
+        (0x00, 0x01, 0x7E), # 14
+        (0x00, 0x01, 0x7F), # 15 R
+    ]
+    coarse = float(0.03125)
+    fine = float(0.005)
+
+    def __init__(self, track, address='/track/vpot/{}'):
+        self.log = track.desk.log
+        self.track = track
+        #TODO allow mode switch between dot and fill display
+        self.scale = _ReaVpot.scale_fill
+        self.pang = 0
+        self.panv = 0,
+        self.pan = float(0.5)
+        self.cmdbytes_d_c = (c_ubyte * 30)()
+        self.cmdbytes = (c_ubyte * 8)()
+        for ind, byt in enumerate(
+                [0xF0, 0x13, 0x01, 0x00, self.track.track_number & 0x3f,
+                 0x00, 0x00, 0xF7]):
+            self.cmdbytes[ind] = byt
+            self.cmdbytes_d_c[ind] = byt
+        self.osc_address = address.format(
+            self.track.track_number + 1)
+        self.osc_message = OSC.OSCMessage(self.osc_address)
+
+    def __str__(self):
+        return 'Channel:{}, Pan:{}, Pang:{}, Panv:{}, b:{} {} CmdBytes:{}'.format(
+            self.track.track_number,
+            self.pan,
+            self.pang,
+            self.panv,
+            self.cmdbytes[5],
+            self.cmdbytes[6],
+            binascii.hexlify(self.cmdbytes)
+        )
+
+    def d_c(self, parsedcmd):
+        """Desk to Computer. Update from desk command byte list"""
+        cbytes = parsedcmd.get('cmdbytes')
+        for ind, byt in enumerate(cbytes):
+            self.cmdbytes_d_c[ind] = ord(byt)
+        self.adj_pan(self)
+        self.osc_message.clearData()
+        self.osc_message.append(self.pan)
+        self.update_led()
+        self.track.desk.osc_client_send(self.osc_message)
+
+    def c_d(self, addrlist, stuff):
+        """Computer to Desk. Update from DAW pan value (0-1)"""
+        pan = stuff[0]
+        self.pan = pan
+        self.update_led()
+
+    def update_led(self):
+        """Update the LED display aroudn the vpot"""
+        if self.pan > 0 and self.pan < 1:
+            self.panv = self.pan - 0.5
+            self.pang = int(self.panv * 16) + 7
+        elif self.pan == 0:
+            self.panv = -0.5
+            self.pang = 0
+        elif self.pan == 1:
+            self.panv = 0.5
+            self.pang = 15
+        try:
+            led = self.led_value(self.pang)
+            self.cmdbytes[4], self.cmdbytes[5], self.cmdbytes[6] = led
+            self.cmdbytes[4] = self.cmdbytes[4] | (self.track.track_number & 0x3f)
+        except IndexError:
+            self.log.debug('VPOT LED lookup failure: %s', self)
+        self.track.desk.daemon_client_send(self.cmdbytes)
+        self.log.debug('VPOT LED: %s', self)
+
+    def led_value(self, pang):
+        """Look up the value to send to the pot LEDs"""
+        return self.scale[pang]
+
+    @staticmethod
+    def adj_pan(vpot):
+        """Increment/decrement the pan factor from command bytes"""
+        potdir = vpot.cmdbytes_d_c[2] - 64
+        potvel = vpot.cmdbytes_d_c[3]
+        if vpot.track.desk.c24modifiers.command:
+            amt = vpot.fine
+        else:
+            amt = vpot.coarse
+        adj = potdir * amt
+        vpot.pan += adj
+        if vpot.pan > 1:
+            vpot.pan = 1
+        if vpot.pan < 0:
+            vpot.pan = 0
+        return adj
+
+
+
+class _ReaFader(ReaBase):
+    """Class to hold and convert fader value representations"""
+    #TODO move this into this class
+    faderscale = ReaBase.calc_faderscale()
+
+    def __init__(self, track, address='/track/fader/{}'):
+        self.log = track.desk.log
+        self.track = track
+        self.gain = None
+        self.cmdbytes = (c_ubyte * 5)()
+        for ind, byt in enumerate(
+                [0xB0, self.track.track_number & 0x1F,
+                 0x00, self.track.track_number + 0x20, 0x00]):
+            self.cmdbytes[ind] = byt
+        self.osc_address = address.format(
+            self.track.track_number + 1)
+        self.osc_message = OSC.OSCMessage(self.osc_address)
+        self.last_tick = 0.0
+        self.touch_status = False
+
+    def __str__(self):
+        return 'Channel:{}, Gain:{}, CmdBytes:{}'.format(
+            self.track.track_number,
+            self.gain,
+            binascii.hexlify(self.cmdbytes)
+        )
+
+    def d_c(self, parsedcmd):
+        """Desk to Computer. Update from desk command byte list"""
+        addr = parsedcmd.get('addresses')
+        if addr[1] == 'track':
+            self._update_from_fadermove(parsedcmd)
+        elif addr[1] == 'button':
+            self._update_from_touch(parsedcmd)
+        else:
+            self.log.warn('Unknown command sent to fader class: %s', parsedcmd)
+
+    def c_d(self, _, stuff):
+        """Computer to Desk. Update from DAW gain factor (0-1)"""
+        gai = stuff[0]
+        self.gain = gai
+        self.cmdbytes[3] = 0x20 + self.track.track_number
+        self.cmdbytes[2], self.cmdbytes[4] = self.calc_cmdbytes(self)
+        self.track.desk.c24_client_send(self.cmdbytes)
+
+    def _update_from_fadermove(self, parsedcmd):
+        cbytes = parsedcmd.get('cmdbytes')
+        t_in = ord(cbytes[1])
+        if t_in != self.track.track_number:
+            self.log.error('Track from Command Bytes does not match Track object Index: %s %s',
+                      binascii.hexlify(cbytes), self)
+            return None
+        #TODO tidy up here
+        if len(cbytes) < 2:
+            self.log.warn('ReaFader bad signature %s',
+                    parsedcmd)
+            return None
+        if cbytes[3] == '\x00':
+            self.log.warn('ReaFader bad signature %s',
+                     parsedcmd)
+            return None
+        self.cmdbytes[2] = ord(cbytes[2])
+        self.cmdbytes[4] = ord(cbytes[4])
+        self.gain = self.calc_gain(self)
+        self.osc_message.clearData()
+        self.osc_message.append(self.gain)
+        self.track.desk.osc_client_send(self.osc_message)
+        if tick() - self.last_tick > TIMING_FADER_ECHO:
+            self.track.desk.daemon_client_send(self.cmdbytes)
+        self.last_tick = tick()
+
+    def _update_from_touch(self, parsedcmd):
+        val = parsedcmd.get('Value')
+        valb = bool(val)
+        if self.touch_status and not valb:
+            self.track.desk.c24_client_send(self.cmdbytes)
+        self.touch_status = valb
+
+    @staticmethod
+    def calc_cmdbytes(fdr):
+        """Calculate the command bytes from gain factor"""
+        gain_from_daw = fdr.gain
+        if gain_from_daw > 1:
+            gain_from_daw = 1
+        gain_tenbits = int(gain_from_daw * FADER_RANGE) - 1
+        if gain_tenbits < 0:
+            gain_tenbits = 0
+        tenb = ReaBase.tenbits(gain_tenbits)
+        return c_ubyte(tenb[0]), c_ubyte(tenb[1])
+
+    @staticmethod
+    def calc_gain(fdr):
+        """Calculate the gain factor from command bytes"""
+        volume_from_desk = (fdr.cmdbytes[2], fdr.cmdbytes[4])
+        return _ReaFader.faderscale[volume_from_desk]
+
+class Reabuttonled(ReaBase):
+    """ class to tidy up chunk of code from main c_d method
+    for turning on/off button LED's """
+
+
+    def __init__(self, desk, track):
+        self.log = desk.log
+        self.desk = desk
+        self.track = track
+        self.cmdbytes = (c_ubyte * 3)()
+        self.states = {}
+        #TODO Command bytes in midi always have msb set
+        # so this isn't really required
+        self.mapping_osc = {}
+        self.ReaBase.walk(self.desk.mapping_tree.get(0x90).get('Children'),
+                 '/button', [0x90, 0x00, 0x00], 1, None, self.mapping_osc)
+
+    def c_d(self, addrlist, stuff):
+        """computer to desk handler"""
+        addr = '/'.join(addrlist)
+        val = stuff[0]
+        self.set_btn(addr, val)
+
+    def d_c(self, parsedcmd):
+        """desk to computer handler"""
+        addr = parsedcmd.get('address')
+        val = parsedcmd.get('Value')
+        valr = self.set_btn(addr, val)
+        if not valr is None:
+            osc_msg = OSC.OSCMessage(addr)
+            self.desk.osc_client_send(osc_msg, valr)
+
+    def set_btn(self, addr, val):
+        """set button value"""
+        try:
+            lkpbtn = self.mapping_osc[addr]
+            self.log.debug("Button LED: %s", lkpbtn)
+            if not self.track is None:
+                tbyt = lkpbtn.get('TrackByte')
+            else:
+                tbyt = None
+            tog = lkpbtn.get('Toggle')
+            if (tog and val == 1) or not tog:
+                if tog:
+                    vals = self.toggle_state(addr)
+                else:
+                    vals = val
+                # Copy the byte sequence injecting track number
+                for ind, byt in enumerate(lkpbtn['cmdbytes']):
+                    c_byt = c_ubyte(byt)
+                    if ind == tbyt and self.track is not None:
+                        c_byt.value = c_byt.value | self.track.track_number
+                    # On or Off
+                    if ind == 2 and vals == 1:
+                        c_byt.value = c_byt.value | 0x40
+                    self.cmdbytes[ind] = c_byt
+                self.log.debug("Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
+                self.desk.daemon_client_send(self.cmdbytes)
+                return vals
+        except KeyError:
+            self.log.warn("OSCServer LED not found: %s %s", addr, str(val))
+        return None
+
+    def toggle_state(self, addr):
+        """toggle between on and off states"""
+        state = self.states.get('addr') or 0.0
+        if state == 0.0:
+            state = 1.0
+        else:
+            state = 0.0
+        self.states[addr] = state
+        return state
+
+
+class _ReaAutomode(ReaBase):
+    """ class to deal with the automation toggle on a track
+    with the various LEDs and modes exchanged between DAW and desk"""
+    automodes = {
+        'write' : {'state': False, 'cmd': 0x40},
+        'touch' : {'state': False, 'cmd': 0x20},
+        'latch' : {'state': False, 'cmd': 0x10},
+        'trim'  : {'state': False, 'cmd': 0x08},
+        'read'  : {'state': False, 'cmd': 0x04}
+    }
+
+    def __init__(self, desk, track, address='/track/automode/{}/{}'):
+        self.log = desk.log
+        self.desk = desk
+        self.track = track
+        self.address = address
+        self.cmdbytes = (c_ubyte * 30)()
+        for ind, byt in enumerate(
+                [0xF0, 0x13, 0x01, 0x20, self.track.track_number & 0x1F,
+                 0x00, 0xF7]):
+            self.cmdbytes[ind] = byt
+        self.modes = dict(self.automodes)
+
+    def __str__(self):
+        mods = ['{}:{}'.format(key, value.get('state')) for key, value in self.modes.iteritems()]
+        return 'Reaautomode track:{} byt:{} modes:{} '.format(
+            self.track.track_number,
+            self.cmdbytes[5],
+            mods
+        )
+
+    def c_d(self, addrlist, stuff):
+        """computer to desk handler"""
+        mode_in = addrlist[3]
+        mode_onoff = bool(stuff[0])
+        self.set_mode(mode_in, mode_onoff)
+        self.update_led()
+
+    def d_c(self, parsedcmd):
+        """deskt to computer handler"""
+        val = parsedcmd.get('Value')
+        if val == 1:
+            first = None
+            nxt = False
+            moved = False
+            for key in self.modes.keys():
+                if not first:
+                    first = key
+                mode = self.modes.get(key)
+                if mode.get('state'):
+                    self.set_mode(key, False)
+                    self.daw_mode(key, False)
+                    moved = True
+                    nxt = True
+                elif nxt:
+                    self.set_mode(key, True)
+                    self.daw_mode(key, True)
+                    nxt = False
+            if nxt or not moved:
+                self.set_mode(first, True)
+                self.daw_mode(first, True)
+            self.update_led()
+
+    def daw_mode(self, mode_in, onoff):
+        """send the current mode to the DAW"""
+        addr = self.address.format(
+            mode_in,
+            self.track.osctrack_number
+            )
+        msg = OSC.OSCMessage(addr)
+        msg.append('{}.0'.format(onoff * 1))
+        self.track.desk.osc_client_send(msg)
+
+    def set_mode(self, mode_in, onoff):
+        """set the current mode state"""
+        mode = self.modes.get(mode_in)
+        mode['state'] = onoff
+        bitv = mode.get('cmd')
+        curv = self.cmdbytes[5]
+        if onoff and curv & bitv == 0:
+            curv += bitv
+        elif curv & bitv != 0 and not onoff:
+            curv -= bitv
+        self.cmdbytes[5] = curv
+
+    def update_led(self):
+        """Update the LED display by the auto toggle"""
+        self.track.desk.daemon_client_send(self.cmdbytes)
+        self.log.debug('AUTO LED: %s', self)
+
+
+
+
+
+class _ReaOscsession(object):
+    """Class for the entire client session"""
+    # Extract a list of first level command bytes from the mapping tree
+    # To use for splitting up multiplexed command sequences
+
+    @staticmethod
+    def itsplit(inlist):
+        """child method of cmdsplit"""
+        current = []
+        for item in inlist:
+            if ord(item) == 0xF7:
+                current.append(item)
+                yield current
+                current = []
+            #TODO made the change here need to confirm
+            elif ord(item) & 0x80 == 0x80 and not current == []:
+                yield current
+                current = [item]
+            else:
+                current.append(item)
+        yield current
+
+    @staticmethod
+    def cmdsplit(inlist):
+        """split input list into sublists when the first byte
+        is repeated or terminator F7 byte is encountered"""
+        if not inlist:
+            return None
+        elif inlist[0] == 0x00:
+            return inlist
+
+        return [subl for subl in _ReaOscsession.itsplit(inlist) if subl]
+
+    def parsecmd(self, cmdbytes):
+        """take a byte list split from the packet data and find it in the mapping dict tree"""
+        # possibly evil but want to catch these for a more fluid
+        # debugging session if they occur a lot
+        if not isinstance(cmdbytes, list):
+            return {'Name': 'Empty'}
+        parsedcmd = {}
+        parsedcmd["addresses"] = []
+        parsedcmd["cmdbytes"] = cmdbytes
+        parsedcmd["lkpbytes"] = []
+        this_byte_num = 0
+        this_byte = ord(cmdbytes[this_byte_num])
+        lkp = self.mapping_tree
+        level = 0
+        while not this_byte_num is None:
+            parsedcmd["lkpbytes"].append(this_byte)
+            level = level + 1
+            lkp = lkp.get(this_byte)
+            if not lkp:
+                self.log.warn(
+                    'Level %d byte not found in MAPPING_TREE: %02x. New mapping needed for sequence %s',
+                    level,
+                    this_byte,
+                    cmdbytes
+                    )
+                return None
+            # Copy this level's dict entries but not the children subdict. i.e. flatten/accumulate
+            if "Address" in lkp:
+                parsedcmd["addresses"].append('/')
+                parsedcmd["addresses"].append(lkp["Address"])
+            parsedcmd.update(
+                {key: lkp[key] for key in lkp if any([
+                    "Byte" in key,
+                    "Class" in key,
+                    "SetMode" in key,
+                    "Toggle" in key
+                ])}
+            )
+            if 'ChildByte' in lkp:
+                this_byte_num = lkp['ChildByte']
+                try:
+                    this_byte = ord(cmdbytes[this_byte_num])
+                except IndexError:
+                    self.log.warn('Parsecmd: byte not found. Possible malformed command: %s')
+                    return None
+                if 'ChildByteMask' in lkp:
+                    this_byte = this_byte & lkp['ChildByteMask']
+                elif 'ChildByteMatch' in lkp:
+                    # TODO there is bound to be a neat bitwise way of doing this
+                    match_byte = lkp['ChildByteMatch']
+                    if this_byte & match_byte == match_byte:
+                        this_byte = match_byte
+                    else:
+                        this_byte = 0x00
+                lkp = lkp['Children']
+            else:
+                this_byte_num = None
+
+        # Done with the recursive Lookup, now we can derive
+        # TODO this is primitive right now around value derivation
+        # parsedcmd should be some sort of data class
+        if 'TrackByte' in parsedcmd:
+            track_byte = ord(cmdbytes[parsedcmd['TrackByte']])
+            if 'TrackByteMask' in parsedcmd:
+                track_byte = track_byte & parsedcmd['TrackByteMask']
+            tracknumber = int(track_byte)
+            parsedcmd["TrackNumber"] = tracknumber
+            parsedcmd["addresses"].append('/')
+            parsedcmd["addresses"].append('{}'.format(tracknumber + 1))
+        if 'DirectionByte' in parsedcmd:
+            direction_byte = ord(cmdbytes[parsedcmd['DirectionByte']])
+            parsedcmd["Direction"] = int(direction_byte) - 64
+        if 'ValueByte' in parsedcmd:
+            # Not all commands actually have their value byte
+            # specifically dials/jpots. Assume this means 0
+            try:
+                value_byte = ord(cmdbytes[parsedcmd['ValueByte']])
+                if 'ValueByteMask' in parsedcmd:
+                    value_byte_mask = parsedcmd['ValueByteMask']
+                    value_byte = value_byte & value_byte_mask
+                    if value_byte == value_byte_mask:
+                        parsedcmd["Value"] = 1.0
+                    elif value_byte == 0x00:
+                        parsedcmd["Value"] = 0.0
+            except IndexError:
+                value_byte = 0x00
+                parsedcmd["Value"] = 0.0
+
+        parsedcmd["address"] = ''.join(parsedcmd["addresses"])
+        return parsedcmd
+
+    # Event methods
+    def _desk_to_daw(self, c_databytes):
+        trace(self.log, binascii.hexlify(c_databytes))
+        commands = _ReaOscsession.cmdsplit(c_databytes)
+        trace(self.log, 'nc: %d', len(commands))
+        for cmd in commands:
+            parsed_cmd = _ReaOscsession.parsecmd(cmd)
+            if parsed_cmd:
+                address = parsed_cmd.get('address')
+                self.log.debug(parsed_cmd)
+                # If we have a track number then get the corresponding object
+                track_number = parsed_cmd.get("TrackNumber")
+                track = self.desk.get_track(track_number)
+                # If map indicates a mode is to be set then call the setter
+                set_mode = parsed_cmd.get('SetMode')
+                if set_mode:
+                    # Suspect commented out line was a bug preventing
+                    # proper desk wide scriblle updates.
+                    # should have been calling set mode function not setting object.
+                    # @phunkyg 29/09/18
+                    self.desk.set_mode(set_mode)
+                    # self.desk.mode = set_mode
+
+                # CLASS based Desk-Daw, where complex logic is needed so encap. in class
+                cmd_class = parsed_cmd.get('CmdClass')
+                if not cmd_class is None:
+                    # Most class handlers will be within a track
+                    # but if not then try the desk object
+                    try:
+                        inst = getattr(track or self.desk, cmd_class.lower())
+                        # Call the desk_to_computer method of the class
+                        inst.d_c(parsed_cmd)
+                    except AttributeError:
+                        self.log.warn(
+                            'Looking for mapped cmd_class but it is not found. The map is incorrect. Track: %d Class: %s',
+                            track_number,
+                            cmd_class
+                        )
+                    except:
+                        self.log.error(
+                            'Error looking up cmd_class. Track: %d Class: %s',
+                            track_number,
+                            cmd_class,
+                            exc_info=True
+                        )
+                else:
+                    # NON CLASS based Desk-DAW i.e. basic buttons
+                    if 'button' in parsed_cmd.get('addresses'):
+                        osc_msg = OSC.OSCMessage(address)
+                        if not osc_msg is None:
+                            self.osc_client_send(osc_msg, parsed_cmd.get('Value'))
+
+    def _daw_to_desk(self, addr, tags, stuff, source):
+        """message handler for the OSC listener"""
+        self.log.debug("OSC Listener received Message: %s %s [%s] %s",
+                  source, addr, tags, str(stuff))
+        if self.osc_listener_last is None:
+            self.osc_listener_last = source
+        elif self.osc_listener_last != source:
+            self.log.warn('OSC message received from an unexpected source address %s', source)
+
+        # TODO primitive switching needs a proper lookup map
+        addrlist = addr.split('/')
+        if 'track' in addrlist:
+            track_number = int(addrlist[-1]) - 1
+            track = self.desk.get_track(track_number)
+            addrlist.pop()
+            addr = '/'.join(addrlist)
+        else:
+            track_number = None
+            track = None
+
+        # track based addresses must have the 2nd part
+        # of the address equal to the attribute name
+        # which should be the class name in lowercase
+        cmdinst = None
+        if addrlist[1] == 'track':
+            cmdinst = getattr(track, addrlist[2])
+        elif addrlist[1] == 'clock':
+            cmdinst = self.desk.clock
+        elif addrlist[1] == 'button':
+            # button LEDs
+            if not track is None:
+                cmdinst = track.reabuttonled
+            else:
+                cmdinst = self.desk.reabuttonled
+        else:
+            msg_string = "%s [%s] %s" % (addr, tags, str(stuff))
+            self.log.warn("ReaOscsession Unhandled osc address: %s", msg_string)
+            return
+        cmdinst.c_d(addrlist, stuff)
+
+    # Threaded methods
+    def _manage_daemon_client(self):
+        trace(self.log, 'Daemon client thread starting')
+        while not self.is_closing:
+            if self.standalone:
+                # Poll for a connection, in case server is not up
+                self.log.debug(
+                    'Starting multiprocess client connecting to %s',
+                    self.server)
+                while self.daemon_client is None:
+                    try:
+                        self.daemon_client = Client(
+                            self.server, authkey=DEFAULTS.get('auth'))
+                    except Exception as exc:
+                        # Connection refused
+                        if exc[0] == 61:
+                            self.log.error(
+                                'Error trying to connect to daemon at %s. May not be running. Will try again.',
+                                self.server)
+                            time.sleep(TIMING_SERVER_POLL)
+                        else:
+                            self.log.error(
+                                'Deamon client Unhandled exception', exc_info=True)
+                            raise
+            else:
+                self.daemon_client = self.server_pipe
+            self.daemon_client_is_connected = True
+
+            # Main Loop when connected
+            while self.daemon_client_is_connected:
+                self.log.debug('multiprocess Client waiting for data: %s',
+                          self.daemon_client.fileno())
+                try:
+                    datarecv = self.daemon_client.recv_bytes()
+                    self._desk_to_daw(datarecv)
+                except EOFError:
+                    self.log.error('multiprocess Client EOFError: Daemon closed communication.')
+                    self.daemon_client_is_connected = False
+                    self.daemon_client = None
+                    time.sleep(TIMING_SERVER_POLL)
+                except Exception:
+                    self.log.error("Daemon client Uncaught exception", exc_info=True)
+                    raise
+        # Close down gracefully
+        if self.daemon_client_is_connected:
+            self.daemon_client.close()
+            self.daemon_client_is_connected = False
+        self.log.debug('Daemon client thread finished')
+
+    def _manage_osc_listener(self):
+        self.log.debug('OSC listener thread starting')
+        self.osc_listener = OSC.OSCServer(
+            self.listen)
+        # Register OSC Listener handler methods
+        self.osc_listener.addDefaultHandlers()
+        self.osc_listener.addMsgHandler("default", self._daw_to_desk)
+
+        while not self.is_closing:
+            self.log.debug('Starting OSC Listener at %s', self.listen)
+            try:
+                self.osc_listener.serve_forever()
+            except Exception as exc:
+                if exc[0] == 9:
+                    self.log.debug("OSC shutdown error", exc_info=True)
+                else:
+                    self.log.error("OSC Listener error", exc_info=True)
+                #raise
+            self.log.debug('OSC Listener stopped')
+            time.sleep(TIMING_OSC_LISTENER_RESTART)
+        self.log.debug('OSC listener thread finished')
+
+    def _manage_osc_client(self):
+        self.log.debug('OSC client thread starting')
+        testmsg = OSC.OSCMessage('/print')
+        testmsg.append('hello DAW')
+
+        while not self.is_closing:
+            self.osc_client = OSC.OSCClient()
+            while self.osc_listener is None or self.osc_listener_last is None or not self.osc_listener.running:
+                self.log.debug(
+                    'Waiting for the OSC listener to get a client %s', self.osc_listener_last)
+                time.sleep(TIMING_WAIT_OSC_LISTENER)
+            try:
+                self.log.debug('Starting OSC Client connecting to %s',
+                          self.connect)
+                self.osc_client.connect(self.connect)
+                self.osc_client_is_connected = True
+            except Exception:
+                self.log.error("OSC Client connection error",
+                          exc_info=True)
+                self.osc_client_is_connected = False
+                time.sleep(TIMING_OSC_CLIENT_RESTART)
+            while self.osc_client_is_connected and not self.is_closing:
+                self.log.debug("Sending Test message via OSC Client")
+                try:
+                    self.osc_client.send(testmsg)
+                except OSC.OSCClientError:
+                    self.log.error("Sending Test message got an error. DAW is no longer responding.")
+                    self._disconnect_osc_client()
+                except Exception:
+                    self.log.error("OSC Client Unhandled exception", exc_info=True)
+                    raise
+                time.sleep(TIMING_OSC_CLIENT_LOOP)
+            time.sleep(TIMING_OSC_CLIENT_RESTART)
+        self.log.debug('OSC client thread finished')
+
+    # common methods for disconnects (starting some tidying and DRY)
+    def _disconnect_osc_client(self):
+        self.osc_client_is_connected = False
+        self.osc_listener_last = None
+        self.osc_client.close()
+        self.osc_client = None
+
+    def osc_client_send(self, osc_msg, simplevalue=None):
+        """dry up the calls to osc client send
+        that are wrapped in a connection check"""
+        if not simplevalue is None:
+            osc_msg.append(simplevalue)
+        self.log.debug('OSCClient sending: %s', osc_msg)
+        if self.osc_client_is_connected:
+            try:
+                self.osc_client.send(osc_msg)
+            except:
+                self.log.error("Error sending OSC msg:",
+                          exc_info=sys.exc_info())
+                self._disconnect_osc_client()
+        else:
+            self.log.debug(
+                "OSC Client not connected but message send request received: %s", osc_msg)
+
+    def daemon_client_send(self, cmdbytes):
+        """dry up the calls to the MP send that
+        are wrapped in a connection check"""
+        if self.daemon_client_is_connected:
+            trace(self.log, "multiprocess send: %s",
+                      binascii.hexlify(cmdbytes))
+            self.daemon_client.send_bytes(cmdbytes)
+
+    # session housekeeping methods
+    def __init__(self, opts, networks, pipe=None):
+        """Contructor to build the client session object"""
+        self.log = start_logging("ReaOscsession", opts.logdir, opts.debug)
+        try:
+            self.standalone = pipe is None
+            if self.standalone:
+                self.server = OSC.parseUrlStr(opts.server)[0]
+                self.server_pipe = None
+                self.log.debug('ReaOscsession Starting up in STANDALONE mode')
+            else:
+                self.server = None
+                self.server_pipe = pipe
+                self.log.debug('ReaOscsession Starting up in SUBPROCESS mode')
+            self.listen = OSC.parseUrlStr(opts.listen)[0]
+            self.connect = OSC.parseUrlStr(opts.connect)[0]
+            self.osc_listener = None
+            self.osc_listener_last = None
+            self.osc_client = None
+            self.osc_client_is_connected = False
+            self.daemon_client = None
+            self.daemon_client_is_connected = False
+            self.is_closing = False
+
+            # Start a thread to manage the connection to the control24d
+            self.thread_daemon_client = threading.Thread(
+                target=self._manage_daemon_client,
+                name='thread_daemon_client'
+            )
+            self.thread_daemon_client.daemon = True
+            self.thread_daemon_client.start()
+
+            # Start a thread to manage the OSC Listener
+            self.thread_osc_listener = threading.Thread(
+                target=self._manage_osc_listener,
+                name='thread_osc_listener'
+            )
+            self.thread_osc_listener.daemon = True
+            self.thread_osc_listener.start()
+
+            # Start a thread to manage the OSC Client
+            self.thread_osc_client = threading.Thread(
+                target=self._manage_osc_client,
+                name='thread_osc_client'
+            )
+            self.thread_osc_client.daemon = True
+            self.thread_osc_client.start()
+
+            self.thread_daemon_client.join()
+        except:
+            self.log.error('Error in osc client', exc_info=True)
+            raise
+
+    def __str__(self):
+        """pretty print session state if requested"""
+        return 'osc session: daemon_client_is_connected:{}'.format(
+            self.daemon_client_is_connected
+        )
+
+    def close(self):
+        """Placeholder if we need a shutdown method"""
+        self.log.info("ReaOscsession closing")
+        # For threads under direct control this signals to please end
+        self.is_closing = True
+        # For others ask nicely
+        if not self.osc_listener is None and self.osc_listener.running:
+            self.osc_listener.close()
+        self.log.info("ReaOscsession closed")
+
+    def __del__(self):
+        """Placeholder to see if session object destruction is a useful hook"""
+        trace(self.log, "ReaOscsession del")
+        self.close()
+
+
