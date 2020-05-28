@@ -50,10 +50,10 @@ class C24Track(_ReaTrack):
     Spefically for Control24 desk layout"""
 
     def __init__(self, desk, track_number):
-        super(_ReaTrack, self).__init__(self, desk, track_number)
+        super(C24Track, self).__init__(desk, track_number)
         # super gives us the common layout, now we add Pro Control specifics
         # Only channel strip setup specific to Control24 goes here
-        if self.track_number < self.desk.channels:
+        if self.track_number < self.desk.real_channels:
             self.fader = C24fader(self)
             self.vpot = C24vpot(self)
             self.automode = C24automode(self.desk, self)
@@ -106,7 +106,7 @@ class C24desk(_ReaDesk):
     def __init__(self, parent):
         """ Build a base desk object with the _Readesk class
         then apply the specifics for this device """
-        super(_ReaDesk, self).__init__(self, parent)
+        super(C24desk, self).__init__(parent)
 
         self.mapping_tree = control24map.MAPPING_TREE
         self.reabuttonled = ReaButtonLed(self, None)
@@ -115,8 +115,10 @@ class C24desk(_ReaDesk):
         # Set up specifics for this device
         self.real_channels = C24desk.real_channels
         self.virtual_channels = C24desk.virtual_channels
+        # There are several but only 1 mapped and active at this time
+        self.busvus = 1
 
-        self.instantiate_tracks(self, C24Track)
+        self.instantiate_tracks(C24Track)
 
 
 class C24scribstrip(_ReaScribStrip):
@@ -128,8 +130,7 @@ class C24scribstrip(_ReaScribStrip):
     bank = 0
 
     def __init__(self, track):
-        super(_ReaScribStrip, self).__init__(
-            self,
+        super(C24scribstrip, self).__init__(
             track,
             C24scribstrip.digits,
             C24scribstrip.bank,
@@ -144,7 +145,7 @@ class C24vpot(_ReaVpot):
     defaultaddress = '/track/c24vpot/{}'
 
     def __init__(self, track):
-        super(_ReaVpot, self).__init__(self, track, C24vpot.defaultaddress)
+        super(C24vpot, self).__init__(track, C24vpot.defaultaddress)
 
 
 class C24fader(_ReaFader):
@@ -152,7 +153,7 @@ class C24fader(_ReaFader):
     defaultaddress = '/track/c24fader/{}'
 
     def __init__(self, track):
-        super(_ReaFader, self).__init__(self, track, C24fader.defaultaddress)
+        super(C24fader, self).__init__(track, C24fader.defaultaddress)
 
 
 class C24automode(_ReaAutomode):
@@ -161,7 +162,7 @@ class C24automode(_ReaAutomode):
     defaultaddress = '/track/c24automode/{}/{}'
 
     def __init__(self, desk, track):
-        super(_ReaAutomode, self).__init__(self, desk, track, C24automode.defaultaddress)
+        super(C24automode, self).__init__(desk, track, C24automode.defaultaddress)
 
 
 class C24Oscsession(_ReaOscsession):
@@ -169,9 +170,10 @@ class C24Oscsession(_ReaOscsession):
 
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
+        self.log = None
         self.desk = C24desk(self)
         self.mapping_tree = control24map.MAPPING_TREE
-        super(_ReaOscsession, self).__init__(self, opts, networks, pipe)
+        super(C24Oscsession, self).__init__(opts, networks, pipe)
 
 
 # main program if run in standalone mode

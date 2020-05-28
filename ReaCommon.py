@@ -673,14 +673,14 @@ class ReaClock(ReaBase):
         self.op_list = self._xform_txt(optext)
         self.byt_list = list(self.op_list)
         self.cmdbytes[6:14] = [byt for byt in self.byt_list]
-        self.desk.c24_client_send(self.cmdbytes)
+        self.desk.daemon_client_send(self.cmdbytes)
 
     def d_c(self, parsedcmd):
         """Toggle the mode"""
         if parsedcmd.get('Value') == 1.0:
             self.modemgr.toggle_mode()
             self._set_things()
-            self.desk.c24_client_send(self.ledbytes)
+            self.desk.daemon_client_send(self.ledbytes)
             self._update()
 
     def c_d(self, addrlist, stuff):
@@ -747,7 +747,7 @@ class ReaButtonLed(ReaBase):
                         c_byt.value = c_byt.value | 0x40
                     self.cmdbytes[ind] = c_byt
                 self.log.debug("Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
-                self.desk.c24_client_send(self.cmdbytes)
+                self.desk.daemon_client_send(self.cmdbytes)
                 return vals
         except KeyError:
             self.log.warn("OSCServer LED not found: %s %s", addr, str(val))
@@ -827,7 +827,7 @@ class ReaVumeter(ReaBase):
                 # For now, display whatever mode we last gotfrom the daw
                 self.cmdbytes[4] = 32 * spkr + self.track.track_number
                 self.cmdbytes[5], self.cmdbytes[6] = this_val[0]
-                self.track.desk.c24_client_send(self.cmdbytes)
+                self.track.desk.daemon_client_send(self.cmdbytes)
 
     @staticmethod
     def _xform_vu(val):
@@ -847,14 +847,11 @@ class _ReaDesk(ReaBase):
     specific to the device
     """
 
-    def __init__(
-            self,
-            parent
-    ):
+    def __init__(self, parent):
         """ Base init only builds common elements """
         # passthrough methods
         self.osc_client_send = parent.osc_client_send
-        self.daemon_client_send = parent.c24_client_send
+        self.daemon_client_send = parent.daemon_client_send
         self.log = parent.log
         # Set up the child track objects
 
@@ -870,7 +867,7 @@ class _ReaDesk(ReaBase):
         # set of deskmodes depending on the device
         self.modemgr = None
         # How many channel strips does this device have
-        self.channels = None
+        self.real_channels = None
         # How many viruital channel device have in the address space above real channels
         self.virtual_channels = None
         # How manuy BUS VU led banks does this device have
@@ -916,7 +913,7 @@ class _ReaDesk(ReaBase):
         # Set up the child track objects
         # At the moment all are created equal
         self.tracks = [track_class(self, track_number)
-                       for track_number in range(0, self.channels + self.virtual_channels)]
+                       for track_number in range(0, self.real_channels + self.virtual_channels)]
 
 
 class _ReaTrack(ReaBase):
@@ -931,7 +928,7 @@ class _ReaTrack(ReaBase):
         self.modemgr = ModeManager(self.desk.modemgr.modes)
 
         # Only channel strip setup common to all devices goes here
-        if self.track_number < self.desk.channels:
+        if self.track_number < self.desk.real_channels:
             self.vumeter = ReaVumeter(self)
             self.buttonled = ReaButtonLed(self.desk, self)
 
@@ -1320,7 +1317,7 @@ class _ReaFader(ReaBase):
         self.gain = gai
         self.cmdbytes[3] = 0x20 + self.track.track_number
         self.cmdbytes[2], self.cmdbytes[4] = self.calc_cmdbytes(self)
-        self.track.desk.c24_client_send(self.cmdbytes)
+        self.track.desk.daemon_client_send(self.cmdbytes)
 
     def _update_from_fadermove(self, parsedcmd):
         cbytes = parsedcmd.get('cmdbytes')
@@ -1352,7 +1349,7 @@ class _ReaFader(ReaBase):
         val = parsedcmd.get('Value')
         valb = bool(val)
         if self.touch_status and not valb:
-            self.track.desk.c24_client_send(self.cmdbytes)
+            self.track.desk.daemon_client_send(self.cmdbytes)
         self.touch_status = valb
 
     @staticmethod
@@ -1669,7 +1666,7 @@ class _ReaOscsession(object):
         commands = _ReaOscsession.cmdsplit(c_databytes)
         trace(self.log, 'nc: %d', len(commands))
         for cmd in commands:
-            parsed_cmd = _ReaOscsession.parsecmd(cmd)
+            parsed_cmd = _ReaOscsession.parsecmd(self, cmd)
             if parsed_cmd:
                 address = parsed_cmd.get('address')
                 self.log.debug(parsed_cmd)

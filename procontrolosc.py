@@ -50,11 +50,11 @@ class ProCTrack(_ReaTrack):
     Spefically for Pro Control desk layout"""
 
     def __init__(self, desk, track_number):
-        super(_ReaTrack, self).__init__(self, desk, track_number)
+        super(ProCTrack, self).__init__(desk, track_number)
 
         # super gives us the common layout, now we add Pro Control specifics
         # Only channel strip setup specific to Control24 goes here
-        if self.track_number < self.desk.channels:
+        if self.track_number < self.desk.real_channels:
             self.fader = ProCfader(self)
             self.vpot = ProCvpot(self)
             self.automode = ProCautomode(self.desk, self)
@@ -97,7 +97,7 @@ class ProCdesk(_ReaDesk):
     def __init__(self, parent):
         """ Build a base desk object with the _Readesk class
         then apply the specifics for this device """
-        super(_ReaDesk, self).__init__(self, parent)
+        super(ProCdesk, self).__init__(parent)
 
         self.mapping_tree = procontrolmap.MAPPING_TREE_PROC
         self.reabuttonled = ReaButtonLed(self, None)
@@ -106,8 +106,9 @@ class ProCdesk(_ReaDesk):
         # Set up specifics for this device
         self.real_channels = ProCdesk.real_channels
         self.virtual_channels = ProCdesk.virtual_channels
+        self.busvus = 1
 
-        self.instantiate_tracks(self, ProCTrack)
+        self.instantiate_tracks(ProCTrack)
 
 
 class ProCscribstrip(_ReaScribStrip):
@@ -119,8 +120,7 @@ class ProCscribstrip(_ReaScribStrip):
     bank = 0
 
     def __init__(self, track):
-        super(_ReaScribStrip, self).__init__(
-            self,
+        super(ProCscribstrip, self).__init__(
             track,
             ProCscribstrip.digits,
             ProCscribstrip.bank,
@@ -137,7 +137,7 @@ class ProCvpot(_ReaVpot):
     defaultaddress = '/track/vpot/{}'
 
     def __init__(self, track):
-        super(_ReaVpot, self).__init__(self, track, ProCvpot.defaultaddress)
+        super(ProCvpot, self).__init__(track, ProCvpot.defaultaddress)
 
 
 class ProCfader(_ReaFader):
@@ -145,7 +145,7 @@ class ProCfader(_ReaFader):
     defaultaddress = '/track/fader/{}'
 
     def __init__(self, track):
-        super(_ReaFader, self).__init__(self, track, ProCfader.defaultaddress)
+        super(ProCfader, self).__init__(track, ProCfader.defaultaddress)
 
 
 class ProCautomode(_ReaAutomode):
@@ -154,7 +154,7 @@ class ProCautomode(_ReaAutomode):
     defaultaddress = '/track/automode/{}/{}'
 
     def __init__(self, desk, track):
-        super(_ReaAutomode, self).__init__(self, desk, track, ProCautomode.defaultaddress)
+        super(ProCautomode, self).__init__(desk, track, ProCautomode.defaultaddress)
 
 
 class ProCoscsession(_ReaOscsession):
@@ -162,9 +162,10 @@ class ProCoscsession(_ReaOscsession):
 
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
+        self.log = None
         self.desk = ProCdesk(self)
         self.mapping_tree = procontrolmap.MAPPING_TREE_PROC
-        super(_ReaOscsession, self).__init__(self, opts, networks, pipe)
+        super(ProCoscsession, self).__init__(opts, networks, pipe)
 
 
 # main program if run in standalone mode

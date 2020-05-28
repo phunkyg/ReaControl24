@@ -758,12 +758,12 @@ def main():
     default_iface, default_ip = networks.get_default()
 
     # program options
-    oprs = opts_common("control24d Communication Daemon")
+    oprs = opts_common("ReaControl Communication Daemon")
     oprs.add_option(
         "-n",
         "--network",
         dest="network",
-        help="Ethernet interface to the same network as the Control24. Default = %s" %
+        help="Ethernet interface to the same network as the Desk. Default = %s" %
         default_iface)
     # default_listener = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('daemon'))
     # oprs.add_option(
@@ -772,12 +772,12 @@ def main():
     #     dest="listen",
     #     help="listen on given host:port. Default = %s" % default_listener)
     # TODO did this to get it going but 9124 port will also need an auto-increment or alternative range
-    default_osc_client24 = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('control24osc'))
+    default_osc_client = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscport'))
     oprs.add_option(
         "-l",
         "--listen",
         dest="listen",
-        help="accept OSC client from DAW at host:port. default %s" % default_osc_client24)
+        help="accept OSC client from DAW at host:port. default %s" % default_osc_client)
     default_daw = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscDaw'))
     oprs.add_option(
         "-c",
@@ -786,7 +786,7 @@ def main():
         help="Connect to DAW OSC server at host:baseport. Baseport will increment for subsequent devices. default %s" % default_daw)
     oprs.set_defaults(network=default_iface)
     #oprs.set_defaults(listen=default_listener)
-    oprs.set_defaults(listen=default_osc_client24)
+    oprs.set_defaults(listen=default_osc_client)
     oprs.set_defaults(connect=default_daw)
 
     # Parse and verify options
