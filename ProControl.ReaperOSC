@@ -22,18 +22,18 @@ DEVICE_EQ INSERT
 
 DEVICE_ROTARY_CENTER 0.5
 
-SCROLL_X- b/scroll/CursorLeft
-SCROLL_X+ b/scroll/CursorRight
-SCROLL_Y- b/scroll/CursorUp
-SCROLL_Y+ b/scroll/CursorDown
-ZOOM_X- b/zoom/CursorLeft
-ZOOM_X+ b/zoom/CursorRight
-ZOOM_Y- b/zoom/CursorUp
-ZOOM_Y+ b/zoom/CursorDown
-DEVICE_PREV_FX b/fxcursor/CursorLeft
-DEVICE_NEXT_FX b/fxcursor/CursorRight
-FX_PREV_PRESET b/fxcursor/CursorUp
-FX_NEXT_PRESET b/fxcursor/CursorDown
+SCROLL_X- b/reanav/scroll/CursorLeft
+SCROLL_X+ b/reanav/scroll/CursorRight
+SCROLL_Y- b/reanav/scroll/CursorUp
+SCROLL_Y+ b/reanav/scroll/CursorDown
+ZOOM_X- b/reanav/zoom/CursorLeft
+ZOOM_X+ b/reanav/zoom/CursorRight
+ZOOM_Y- b/reanav/zoom/CursorUp
+ZOOM_Y+ b/reanav/zoom/CursorDown
+DEVICE_PREV_FX b/reanav/fxcursor/CursorLeft
+DEVICE_NEXT_FX b/reanav/fxcursor/CursorRight
+FX_PREV_PRESET b/reanav/fxcursor/CursorUp
+FX_NEXT_PRESET b/reanav/fxcursor/CursorDown
 
 # All the clock values for 4 switchable modes
 SAMPLES s/clock/samples
@@ -55,7 +55,7 @@ FORWARD b/button/command/Transport/Forward
 SCRUB r/scrub
 PLAY_RATE r/playrate/rotary
 
-MASTER_VOLUME s/track/25/procscribstrip/volume
+MASTER_VOLUME s/track/9/procscribstrip/volume
 
 TRACK_NAME s/track/@/procscribstrip/name
 TRACK_MUTE t/button/track/@/Mute

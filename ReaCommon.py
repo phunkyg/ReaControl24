@@ -93,7 +93,7 @@ def trace(logger, msg, *args, **kwargs):
         logger.log(5, msg, *args, **kwargs)
 
 
-def start_logging(name, logdir, debug=False):
+def start_logging(name, logdir, debug=False, tostdout=True):
     """Configure logging for the program
     :rtype:
     """
@@ -134,8 +134,8 @@ def start_logging(name, logdir, debug=False):
     log_formatter = logging.Formatter(logformat)
     log_f.setFormatter(log_formatter)
 
-    # for now only the main process will log to the terminal
-    if name == '__main__':
+    # If param set then send to screen too
+    if tostdout:
         log_s = logging.StreamHandler()
         root_logger.addHandler(log_s)
     return root_logger
@@ -477,12 +477,17 @@ class ReaNav(ReaBase):
             msg = OSC.OSCMessage(addr)
             self.desk.osc_client_send(msg, val)
 
+    def c_d(self, addrlist, stuff):
+        """Respond to anything coming from the DAW"""
+        self.log.warn('ReaNav does not yet implement c_d. Recieved %s', str(addrlist))
+        pass
+
     def update(self):
         """Update button LEDs"""
         for key, val in self.modemgr.modes.iteritems():
             addr = val.get('address')
             butval = int(key == self.modemgr.mode)
-            self.desk.c24buttonled.set_btn(addr, butval)
+            self.desk.reabuttonled.set_btn(addr, butval)
 
 
 class ReaModifiers(ReaBase):
@@ -829,7 +834,7 @@ class ReaVumeter(ReaBase):
 
     def c_d(self, addrlist, stuff):
         """Update from DAW value"""
-        spkr = int(addrlist[3])
+        spkr = int(addrlist[-1])
         val = stuff[0]
         mode = 'postfader'
 
@@ -944,7 +949,7 @@ class _ReaTrack(ReaBase):
 
         # Only channel strip setup common to all devices goes here
         if self.track_number < self.desk.real_channels:
-            self.vumeter = ReaVumeter(self)
+            self.reavumeter = ReaVumeter(self)
 
         # Moved this so all track types have button led obj
         # TODO discover if this is needed
@@ -1400,7 +1405,7 @@ class _ReaAutomode(ReaBase):
         'read': {'state': False, 'cmd': 0x04}
     }
 
-    def __init__(self, desk, track, address='/track/automode/{}/{}'):
+    def __init__(self, desk, track, address='/track/{}/automode/{}'):
         self.log = desk.log
         self.desk = desk
         self.track = track
@@ -1410,7 +1415,7 @@ class _ReaAutomode(ReaBase):
                 [0xF0, 0x13, 0x01, 0x20, self.track.track_number & 0x1F,
                  0x00, 0xF7]):
             self.cmdbytes[ind] = byt
-        self.modes = dict(self.automodes)
+        self.modes = dict(_ReaAutomode.automodes)
 
     def __str__(self):
         mods = ['{}:{}'.format(key, value.get('state')) for key, value in self.modes.iteritems()]
@@ -1422,7 +1427,7 @@ class _ReaAutomode(ReaBase):
 
     def c_d(self, addrlist, stuff):
         """computer to desk handler"""
-        mode_in = addrlist[3]
+        mode_in = addrlist[-1]
         mode_onoff = bool(stuff[0])
         self.set_mode(mode_in, mode_onoff)
         self.update_led()
@@ -1465,6 +1470,8 @@ class _ReaAutomode(ReaBase):
     def set_mode(self, mode_in, onoff):
         """set the current mode state"""
         mode = self.modes.get(mode_in)
+        if not mode:
+            raise ReaException('Automation mode does not exist: %s', mode_in)
         mode['state'] = onoff
         bitv = mode.get('cmd')
         curv = self.cmdbytes[5]
@@ -1682,7 +1689,7 @@ class _ReaOscsession(object):
             addrlist = addr.split('/')
 
             # First address token magic values are used to direct actions through to the right object
-            track_addr_ind = next(ind for ind, adr in enumerate(addrlist) if adr == 'track')
+            track_addr_ind = next((ind for ind, adr in enumerate(addrlist) if adr == 'track'), None)
             if track_addr_ind:
                 # track based addresses must have the
                 # next address token be the @ parameter

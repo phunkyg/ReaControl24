@@ -75,7 +75,7 @@ class ProCdesk(_ReaDesk):
     """Class to represent the desk, state and
     instances to help conversions and behaviour"""
     real_channels = 8
-    virtual_channels = 0
+    virtual_channels = 1
     busvus = 1
     deskmodes = {
         'Values': {
