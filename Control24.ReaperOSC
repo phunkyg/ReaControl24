@@ -66,37 +66,36 @@ GOTO_REGION b/reabuttonled/command/@
 SCRUB r/scrub
 PLAY_RATE r/playrate/rotary
 
-MASTER_VOLUME s/track/Reascribstrip/volume/25
+MASTER_VOLUME s/track/25/Reascribstrip/volume
 
-TRACK_NAME s/track/Reascribstrip/name/@
-TRACK_MUTE t/reabuttonled/track/Mute/@
-TRACK_SOLO t/reabuttonled/track/Solo/@
-TRACK_REC_ARM t/reabuttonled/track/RecArm/@
+TRACK_NAME s/track/@/Reascribstrip/name
+TRACK_MUTE t/reabuttonled/track/@/Mute
+TRACK_SOLO t/reabuttonled/track/@/Solo
+TRACK_REC_ARM t/reabuttonled/track/@/RecArm
 
-TRACK_SELECT t/reabuttonled/track/ChannelSelect/@
+TRACK_SELECT t/reabuttonled/track/@/ChannelSelect
 
-TRACK_VOLUME n/track/reafader/@ s/track/reascribstrip/volume/@
-TRACK_PAN n/track/reavpot/@ s/track/reascribstrip/pan/@
+TRACK_VOLUME n/track/@/reafader s/track/@/reascribstrip/volume
+TRACK_PAN n/track/@/reavpot s/track/@/reascribstrip/pan
 
-TRACK_VU_L n/track/reavumeter/0/@
-TRACK_VU_R n/track/reavumeter/1/@
+TRACK_VU_L n/track/@/reavumeter/0
+TRACK_VU_R n/track/@/reavumeter/1
+MASTER_VU_L n/track/25/reavumeter/0
+MASTER_VU_R n/track/25/reavumeter/1
 
-MASTER_VU_L n/track/reavumeter/0/25
-MASTER_VU_R n/track/reavumeter/1/25
+TRACK_SEND_VOLUME s/track/@/reascribstrip/send/volume
 
-TRACK_SEND_VOLUME s/track/reascribstrip/send/volume/@
+TRACK_AUTO_TRIM t/track/@/reaautomode/trim
+TRACK_AUTO_READ t/track/@/reaautomode/read
+TRACK_AUTO_LATCH t/track/@/reaautomode/latch
+TRACK_AUTO_TOUCH t/track/@/reaautomode/touch
+TRACK_AUTO_WRITE t/track/@/reaautomode/write
 
-TRACK_AUTO_TRIM t/track/reaautomode/trim/@
-TRACK_AUTO_READ t/track/reaautomode/read/@
-TRACK_AUTO_LATCH t/track/reaautomode/latch/@
-TRACK_AUTO_TOUCH t/track/reaautomode/touch/@
-TRACK_AUTO_WRITE t/track/reaautomode/write/@
-
-FX_PRESET s/track/reascribstrip/info/@
-FX_EQ_OPEN_UI t/reabuttonled/track/EQ/@
-FX_INST_OPEN_UI t/reabuttonled/track/Dynamics/@	
+FX_PRESET s/track/@/reascribstrip/info
+FX_EQ_OPEN_UI t/reabuttonled/track/@/EQ
+FX_INST_OPEN_UI t/reabuttonled/track/@/Dynamics
 #Next one doesn’t seem to work very well
-FX_OPEN_UI b/reabuttonled/track/Inserts/@
+FX_OPEN_UI b/reabuttonled/track/@/Inserts
 
 DEVICE_PREV_TRACK_BANK t/reabuttonled/command/EditMode+Function+Banks/Left
 DEVICE_NEXT_TRACK_BANK t/reabuttonled/command/EditMode+Function+Banks/Right
@@ -106,17 +105,17 @@ DEVICE_NEXT_TRACK_BANK t/reabuttonled/command/EditMode+Function+Banks/Right
 
 # for notes, if two, first wildcard is channel (0-15). MIDI note number is required (as decimal integer only!)
 # if parameter value is 0, note-off, otherwise note-on
-VKB_MIDI_NOTE i/vkb_midi/@/note/@ f/vkb_midi/@/note/@ i/vkb_midi/note/@ f/vkb_midi/note/@
+#VKB_MIDI_NOTE i/vkb_midi/@/note/@ f/vkb_midi/@/note/@ i/vkb_midi/note/@ f/vkb_midi/note/@
 # similar, but for 0xA0 (poly aftertouch)
-VKB_MIDI_POLYAFTERTOUCH i/vkb_midi/@/polyaftertouch/@ f/vkb_midi/@/polyaftertouch/@ i/vkb_midi/polyaftertouch/@ f/vkb_midi/polyaftertouch/@
+#VKB_MIDI_POLYAFTERTOUCH i/vkb_midi/@/polyaftertouch/@ f/vkb_midi/@/polyaftertouch/@ i/vkb_midi/polyaftertouch/@ f/vkb_midi/polyaftertouch/@
 # for CCs, if two, first wildcard is channel (0-15). MIDI CC number is required (as decimal integer only!)
-VKB_MIDI_CC i/vkb_midi/@/cc/@ f/vkb_midi/@/cc/@ i/vkb_midi/cc/@ f/vkb_midi/cc/@ 
+#VKB_MIDI_CC i/vkb_midi/@/cc/@ f/vkb_midi/@/cc/@ i/vkb_midi/cc/@ f/vkb_midi/cc/@
 # program change (0xC0) can take channel as wildcard, or value only
-VKB_MIDI_PROGRAM i/vkb_midi/@/program f/vkb_midi/@/program i/vkb_midi/program f/vkb_midi/program
+#VKB_MIDI_PROGRAM i/vkb_midi/@/program f/vkb_midi/@/program i/vkb_midi/program f/vkb_midi/program
 # channel pressure (aftertouch) (0xD0) can take channel as wildcard, or value only
-VKB_MIDI_CHANNELPRESSURE i/vkb_midi/@/channelpressure f/vkb_midi/@/channelpressure i/vkb_midi/channelpressure f/vkb_midi/channelpressure
+#VKB_MIDI_CHANNELPRESSURE i/vkb_midi/@/channelpressure f/vkb_midi/@/channelpressure i/vkb_midi/channelpressure f/vkb_midi/channelpressure
 # pitch can take channel as wildcard, or value only
-VKB_MIDI_PITCH i/vkb_midi/@/pitch f/vkb_midi/@/pitch i/vkb_midi/pitch f/vkb_midi/pitch
+#VKB_MIDI_PITCH i/vkb_midi/@/pitch f/vkb_midi/@/pitch i/vkb_midi/pitch f/vkb_midi/pitch
 
 
 #/vkb_midi/0/cc/90 [63]
@@ -127,8 +126,8 @@ VKB_MIDI_PITCH i/vkb_midi/@/pitch f/vkb_midi/@/pitch i/vkb_midi/pitch f/vkb_midi
 ACTION i/action s/action/str t/action/@ f/action/@/cc
 ACTION_SOFT f/action/@/cc/soft
 ACTION_RELATIVE f/action/@/cc/relative
-MIDIACTION i/midiaction t/midiaction/@
-MIDILISTACTION i/midilistaction t/midilistaction/@
+#MIDIACTION i/midiaction t/midiaction/@
+#MIDILISTACTION i/midilistaction t/midilistaction/@
 
 
 
@@ -149,45 +148,45 @@ LAST_TOUCHED_FX_PARAM_VALUE s/track/Reascribstrip/ltfxpv/31
 #TRACK_PAN2 s/track/Reascribstrip/pan2/@
 
 #Needs the send number 
-#TRACK_SEND_NAME s/track/Reascribstrip/send_name/@
-#TRACK_SEND_VOLUME s/track/Reascribstrip/name/@
-#TRACK_SEND_PAN s/track/Reascribstrip/send_pan/@
-#TRACK_RECV_NAME s/track/Reascribstrip/recv_name/@
-#TRACK_RECV_VOLUME s/track/Reascribstrip/rec_name/@
-#TRACK_RECV_PAN s/track/Reascribstrip/recv_pan/@
+#TRACK_SEND_NAME s/track/@/Reascribstrip/send_name/@
+#TRACK_SEND_VOLUME s/track/@/Reascribstrip/name/@
+#TRACK_SEND_PAN s/track/@/Reascribstrip/send_pan/@
+#TRACK_RECV_NAME s/track/@/Reascribstrip/recv_name/@
+#TRACK_RECV_VOLUME s/track/@/Reascribstrip/rec_name/@
+#TRACK_RECV_PAN s/track/@/Reascribstrip/recv_pan/@
 
 # Experimental
 
-MARKER_NAME s/track/Reascribstrip/mna/30
-MARKER_NUMBER s/track/Reascribstrip/mnu/31
-REGION_NAME s/track/Reascribstrip/rna/30
-REGION_NUMBER s/track/Reascribstrip/rnu/31
-LAST_MARKER_NAME s/track/Reascribstrip/lmna/30
-LAST_MARKER_NUMBER s/track/Reascribstrip/lmnu/31
-LAST_REGION_NAME s/track/Reascribstrip/lrna/30
-LAST_REGION_NUMBER s/track/Reascribstrip/lrnu/31
+MARKER_NAME s/track/30/Reascribstrip/mna
+MARKER_NUMBER s/track/31/Reascribstrip/mnu
+REGION_NAME s/track/30/Reascribstrip/rna
+REGION_NUMBER s/track/31/Reascribstrip/rnu
+LAST_MARKER_NAME s/track/30/Reascribstrip/lmna
+LAST_MARKER_NUMBER s/track/31/Reascribstrip/lmnu
+LAST_REGION_NAME s/track/30/Reascribstrip/lrna
+LAST_REGION_NUMBER s/track/31/Reascribstrip/lrnu
 
-TRACK_PAN_MODE s/track/Reascribstrip/pan_mode/@
+TRACK_PAN_MODE s/track/@/Reascribstrip/pan_mode
 
-TRACK_AUTO s/track/Reascribstrip/auto/@
+TRACK_AUTO s/track/@/Reascribstrip/auto
 
-FX_NAME s/track/Reascribstrip/fxna/@
-FX_NUMBER s/track/Reascribstrip/fxnu/@
+FX_NAME s/track/@/Reascribstrip/fxna
+FX_NUMBER s/track/@/Reascribstrip/fxnu
 
-FX_PRESET s/track/Reascribstrip/fxpr/@
+FX_PRESET s/track/@/Reascribstrip/fxpr
 
-FX_PARAM_NAME s/track/Reascribstrip/fxpna/@
-FX_PARAM_VALUE s/track/Reascribstrip/fxpva/@
+FX_PARAM_NAME s/track/@/Reascribstrip/fxpna
+FX_PARAM_VALUE s/track/@/Reascribstrip/fxpva
 
-FX_INST_NAME s/track/Reascribstrip/fxinstn/@
-FX_INST_PRESET s/track/Reascribstrip/fxinstp/@
-FX_INST_PARAM_NAME s/track/Reascribstrip/fxinstpn/@
-FX_INST_PARAM_VALUE s/track/Reascribstrip/fxinstpv/@
+FX_INST_NAME s/track/@/Reascribstrip/fxinstn
+FX_INST_PRESET s/track/@/Reascribstrip/fxinstp
+FX_INST_PARAM_NAME s/track/@/Reascribstrip/fxinstpn
+FX_INST_PARAM_VALUE s/track/@/Reascribstrip/fxinstpv
 
-LAST_TOUCHED_FX_TRACK_NAME s/track/Reascribstrip/ltfxtn/30
-LAST_TOUCHED_FX_TRACK_NUMBER s/track/Reascribstrip/ltfxtnu/31
-LAST_TOUCHED_FX_NAME s/track/Reascribstrip/ltfxn/30
-LAST_TOUCHED_FX_NUMBER s/track/Reascribstrip/ltfxnu/31
+LAST_TOUCHED_FX_TRACK_NAME s/track/@/Reascribstrip/ltfxtn
+LAST_TOUCHED_FX_TRACK_NUMBER s/track/@/Reascribstrip/ltfxtnu
+LAST_TOUCHED_FX_NAME s/track/@/Reascribstrip/ltfxn
+LAST_TOUCHED_FX_NUMBER s/track/@/Reascribstrip/ltfxnu
 
 # added by Disruptormon - 28/09/18
 #ACTION action/40078 t/reabuttonled/command/Window+ZoomPresets+Navigation/Mix

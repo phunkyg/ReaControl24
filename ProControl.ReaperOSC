@@ -55,7 +55,7 @@ FORWARD b/button/command/Transport/Forward
 SCRUB r/scrub
 PLAY_RATE r/playrate/rotary
 
-MASTER_VOLUME s/track/@/25/procscribstrip/volume
+MASTER_VOLUME s/track/25/procscribstrip/volume
 
 TRACK_NAME s/track/@/procscribstrip/name
 TRACK_MUTE t/button/track/@/Mute
@@ -95,8 +95,8 @@ DEVICE_NEXT_TRACK_BANK t/button/command/EditMode+Function+Banks/Right
 ACTION i/action s/action/str t/action/@ f/action/@/cc
 ACTION_SOFT f/action/@/cc/soft
 ACTION_RELATIVE f/action/@/cc/relative
-MIDIACTION i/midiaction t/midiaction/@
-MIDILISTACTION i/midilistaction t/midilistaction/@
+#MIDIACTION i/midiaction t/midiaction/@
+#MIDILISTACTION i/midilistaction t/midilistaction/@
 
 
 
