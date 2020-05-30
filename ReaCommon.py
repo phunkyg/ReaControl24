@@ -184,6 +184,11 @@ def hexl(inp):
     return ' '.join([shex[i:i + 2] for i in range(0, len(shex), 2)])
 
 
+class ReaException(Exception):
+    """Custom exception to use when there is an internal problem"""
+    pass
+
+
 class NetworkHelper(object):
     """class to contain network related helpful methods
     and such to be re-used where needed"""
@@ -426,37 +431,7 @@ class ReaBase(object):
         fader_step = 1 / float(fader_range)
         return {ReaBase.tenbits(num): num * fader_step for num in range(0, fader_range)}
 
-    @staticmethod
-    def walk(node, path, byts, cbyt, tbyt, outp):
-        """Walk the mapping tree picking off the LED
-        buttons, and inverting the sequence.
-        Basically because too lazy to hand write a second
-        map and keep them in step"""
-        mybyts = list(byts)
-        for key, item in node.items():
-            addr = item.get('Address', '')
-            kids = item.get('Children')
-            kbyt = item.get('ChildByte')
-            if tbyt is None:
-                tbyt = item.get('TrackByte')
-            led = item.get('LED')
-            tog = item.get('Toggle')
-            if kids is not None:
-                kidbyts = list(mybyts)
-                kidbyts[cbyt] = key
-                ReaBase.walk(kids, path + '/' + addr, kidbyts, kbyt, tbyt, outp)
-            else:
-                if addr != '' and led:
-                    leafbyts = list(mybyts)
-                    leafbyts[cbyt] = key
-                    opr = {
-                        'cmdbytes': leafbyts
-                    }
-                    if tog:
-                        opr['Toggle'] = tog
-                    if tbyt is not None:
-                        opr['TrackByte'] = tbyt
-                    outp[path + '/' + addr] = opr
+
 
 
 class ReaNav(ReaBase):
@@ -468,16 +443,16 @@ class ReaNav(ReaBase):
     navmodes = {
         'Nav': {
             'address': '/button/command/Window+ZoomPresets+Navigation/Nav',
-            'osc_address': '/scroll/',
+            'osc_address': '/reanav/scroll/',
             'default': True
         },
         'Zoom': {
             'address': '/button/command/Window+ZoomPresets+Navigation/Zoom',
-            'osc_address': '/zoom/'
+            'osc_address': '/reanav/zoom/'
         },
         'SelAdj': {
             'address': '/button/command/Window+ZoomPresets+Navigation/SelAdj',
-            'osc_address': '/fxcursor/'
+            'osc_address': '/reanav/fxcursor/'
         }
     }
 
@@ -697,14 +672,52 @@ class ReaButtonLed(ReaBase):
     """ class to tidy up chunk of code from main c_d method
     for turning on/off button LED's """
 
+    @staticmethod
+    def walk(node, path, byts, cbyt, tbyt, outp):
+        """Walk the mapping tree picking off the LED
+        buttons, and inverting the sequence.
+        Basically because too lazy to hand write a second
+        map and keep them in step"""
+        mybyts = list(byts)
+        for key, item in node.items():
+            addr = item.get('Address', '')
+            # assume track token will be followed by track number
+            if addr == 'track':
+                addr += '/@'
+            kids = item.get('Children')
+            kbyt = item.get('ChildByte')
+            if tbyt is None:
+                tbyt = item.get('TrackByte')
+            led = item.get('LED')
+            tog = item.get('Toggle')
+            if kids is not None:
+                kidbyts = list(mybyts)
+                kidbyts[cbyt] = key
+                ReaButtonLed.walk(kids, path + '/' + addr, kidbyts, kbyt, tbyt, outp)
+            else:
+                if addr != '' and led:
+                    leafbyts = list(mybyts)
+                    leafbyts[cbyt] = key
+                    opr = {
+                        'cmdbytes': leafbyts
+                    }
+                    if tog:
+                        opr['Toggle'] = tog
+                    if tbyt is not None:
+                        opr['TrackByte'] = tbyt
+                    outp[path + '/' + addr] = opr
+
     def __init__(self, desk, track):
-        self.log = desk.log
+        if track is None:
+            self.log = desk.log
+        else:
+            self.log = track.log
         self.desk = desk
         self.track = track
         self.cmdbytes = (c_ubyte * 3)()
         self.states = {}
         self.mapping_osc = {}
-        ReaBase.walk(desk.mapping_tree.get(0x90).get('Children'),
+        ReaButtonLed.walk(desk.mapping_tree.get(0x90).get('Children'),
                      '/button', [0x90, 0x00, 0x00], 1, None, self.mapping_osc)
 
     def c_d(self, addrlist, stuff):
@@ -724,9 +737,11 @@ class ReaButtonLed(ReaBase):
 
     def set_btn(self, addr, val):
         """set button value"""
+        # First transform entirely numeric address elements to @
+        lkpaddr = '/'.join(['@' if unicode(ad).isnumeric() else ad for ad in addr.split('/')])
         try:
-            lkpbtn = self.mapping_osc[addr]
-            self.log.debug("Button LED: %s", lkpbtn)
+            lkpbtn = self.mapping_osc[lkpaddr]
+            self.log.debug("Button LED: %s %s", lkpaddr, lkpbtn)
             if not self.track is None:
                 tbyt = lkpbtn.get('TrackByte')
             else:
@@ -740,7 +755,7 @@ class ReaButtonLed(ReaBase):
                 # Copy the byte sequence injecting track number
                 for ind, byt in enumerate(lkpbtn['cmdbytes']):
                     c_byt = c_ubyte(byt)
-                    if ind == tbyt and not self.track is None:
+                    if ind == tbyt and self.track is not None:
                         c_byt.value = c_byt.value | self.track.track_number
                     # On or Off
                     if ind == 2 and vals == 1:
@@ -856,7 +871,7 @@ class _ReaDesk(ReaBase):
         # Set up the child track objects
 
         """ Currently standardised Properties"""
-        self.reaclock = ReaClock(self)
+        self.clock = ReaClock(self)
         self.reanav = ReaNav(self)
         self.reamodifiers = ReaModifiers(self)
 
@@ -930,10 +945,13 @@ class _ReaTrack(ReaBase):
         # Only channel strip setup common to all devices goes here
         if self.track_number < self.desk.real_channels:
             self.vumeter = ReaVumeter(self)
-            self.buttonled = ReaButtonLed(self.desk, self)
+
+        # Moved this so all track types have button led obj
+        # TODO discover if this is needed
+        self.reabuttonled = ReaButtonLed(self.desk, self)
 
         if self.track_number == 28:
-            self.vpot = ReaJpot(self)
+            self.reavpot = ReaJpot(self)
             # Allow access from both 'virtual' track 28 AND desk object
             # as it physically belongs there
             self.desk.jpot = self.vpot
@@ -1371,79 +1389,6 @@ class _ReaFader(ReaBase):
         return _ReaFader.faderscale[volume_from_desk]
 
 
-class Reabuttonled(ReaBase):
-    """ class to tidy up chunk of code from main c_d method
-    for turning on/off button LED's """
-
-    def __init__(self, desk, track):
-        self.log = desk.log
-        self.desk = desk
-        self.track = track
-        self.cmdbytes = (c_ubyte * 3)()
-        self.states = {}
-        # TODO Command bytes in midi always have msb set
-        # so this isn't really required
-        self.mapping_osc = {}
-        ReaBase.walk(self.desk.mapping_tree.get(0x90).get('Children'),
-                          '/button', [0x90, 0x00, 0x00], 1, None, self.mapping_osc)
-
-    def c_d(self, addrlist, stuff):
-        """computer to desk handler"""
-        addr = '/'.join(addrlist)
-        val = stuff[0]
-        self.set_btn(addr, val)
-
-    def d_c(self, parsedcmd):
-        """desk to computer handler"""
-        addr = parsedcmd.get('address')
-        val = parsedcmd.get('Value')
-        valr = self.set_btn(addr, val)
-        if not valr is None:
-            osc_msg = OSC.OSCMessage(addr)
-            self.desk.osc_client_send(osc_msg, valr)
-
-    def set_btn(self, addr, val):
-        """set button value"""
-        try:
-            lkpbtn = self.mapping_osc[addr]
-            self.log.debug("Button LED: %s", lkpbtn)
-            if not self.track is None:
-                tbyt = lkpbtn.get('TrackByte')
-            else:
-                tbyt = None
-            tog = lkpbtn.get('Toggle')
-            if (tog and val == 1) or not tog:
-                if tog:
-                    vals = self.toggle_state(addr)
-                else:
-                    vals = val
-                # Copy the byte sequence injecting track number
-                for ind, byt in enumerate(lkpbtn['cmdbytes']):
-                    c_byt = c_ubyte(byt)
-                    if ind == tbyt and self.track is not None:
-                        c_byt.value = c_byt.value | self.track.track_number
-                    # On or Off
-                    if ind == 2 and vals == 1:
-                        c_byt.value = c_byt.value | 0x40
-                    self.cmdbytes[ind] = c_byt
-                self.log.debug("Button LED cmdbytes: %s", binascii.hexlify(self.cmdbytes))
-                self.desk.daemon_client_send(self.cmdbytes)
-                return vals
-        except KeyError:
-            self.log.warn("OSCServer LED not found: %s %s", addr, str(val))
-        return None
-
-    def toggle_state(self, addr):
-        """toggle between on and off states"""
-        state = self.states.get('addr') or 0.0
-        if state == 0.0:
-            state = 1.0
-        else:
-            state = 0.0
-        self.states[addr] = state
-        return state
-
-
 class _ReaAutomode(ReaBase):
     """ class to deal with the automation toggle on a track
     with the various LEDs and modes exchanged between DAW and desk"""
@@ -1469,7 +1414,7 @@ class _ReaAutomode(ReaBase):
 
     def __str__(self):
         mods = ['{}:{}'.format(key, value.get('state')) for key, value in self.modes.iteritems()]
-        return 'Reaautomode track:{} byt:{} modes:{} '.format(
+        return 'ReaAutomode track:{} byt:{} modes:{} '.format(
             self.track.track_number,
             self.cmdbytes[5],
             mods
@@ -1546,11 +1491,14 @@ class _ReaOscsession(object):
         """child method of cmdsplit"""
         current = []
         for item in inlist:
-            if ord(item) == 0xF7:
+            # Weird one - sometimes FF appears at the end of buttons
+            # TODO make sure this is OK/valid to include like a terminator
+            if ord(item) in [0xF7, 0xFF]:
                 current.append(item)
                 yield current
                 current = []
             # TODO made the change here need to confirm
+            # did have the side effect above re 0xFF
             elif ord(item) & 0x80 == 0x80 and not current == []:
                 yield current
                 current = [item]
@@ -1636,8 +1584,11 @@ class _ReaOscsession(object):
                 track_byte = track_byte & parsedcmd['TrackByteMask']
             tracknumber = int(track_byte)
             parsedcmd["TrackNumber"] = tracknumber
-            parsedcmd["addresses"].append('/')
-            parsedcmd["addresses"].append('{}'.format(tracknumber + 1))
+            # Find the index of the 'track' address token
+            # insert the track index number after it
+            ind = next(ind for ind, adr in enumerate(parsedcmd["addresses"]) if adr == 'track')
+            parsedcmd["addresses"].insert(ind+1, '/')
+            parsedcmd["addresses"].insert(ind+2, '{}'.format(tracknumber + 1))
         if 'DirectionByte' in parsedcmd:
             direction_byte = ord(cmdbytes[parsedcmd['DirectionByte']])
             parsedcmd["Direction"] = int(direction_byte) - 64
@@ -1709,48 +1660,70 @@ class _ReaOscsession(object):
                     # NON CLASS based Desk-DAW i.e. basic buttons
                     if 'button' in parsed_cmd.get('addresses'):
                         osc_msg = OSC.OSCMessage(address)
-                        if not osc_msg is None:
+                        if osc_msg is not None:
                             self.osc_client_send(osc_msg, parsed_cmd.get('Value'))
 
     def _daw_to_desk(self, addr, tags, stuff, source):
-        """message handler for the OSC listener"""
+        """message handler for the OSC listener
+        each token from the OSC message is used to redirect the message content
+        to the right cmdclass object in the desk model"""
         self.log.debug("OSC Listener received Message: %s %s [%s] %s",
                        source, addr, tags, str(stuff))
+
         if self.osc_listener_last is None:
             self.osc_listener_last = source
         elif self.osc_listener_last != source:
             self.log.warn('OSC message received from an unexpected source address %s', source)
 
-        # TODO primitive switching needs a proper lookup map
-        addrlist = addr.split('/')
-        if 'track' in addrlist:
-            track_number = int(addrlist[-1]) - 1
-            track = self.desk.get_track(track_number)
-            addrlist.pop()
-            addr = '/'.join(addrlist)
-        else:
+        try:
+            cmdinst = None
             track_number = None
             track = None
+            addrlist = addr.split('/')
 
-        # track based addresses must have the 2nd part
-        # of the address equal to the attribute name
-        # which should be the class name in lowercase
-        cmdinst = None
-        if addrlist[1] == 'track':
-            cmdinst = getattr(track, addrlist[2])
-        elif addrlist[1] == 'clock':
-            cmdinst = self.desk.clock
-        elif addrlist[1] == 'button':
-            # button LEDs
-            if track is not None:
-                cmdinst = track.reabuttonled
+            # First address token magic values are used to direct actions through to the right object
+            track_addr_ind = next(ind for ind, adr in enumerate(addrlist) if adr == 'track')
+            if track_addr_ind:
+                # track based addresses must have the
+                # next address token be the @ parameter
+                # for the track number
+                track_number = int(addrlist[track_addr_ind+1]) - 1
+                track = self.desk.get_track(track_number)
+                if track is None:
+                    raise ReaException('No track object %d', track_number)
+
+                if 'button' in addrlist:
+                    # track buttons are a special case and have a magic token
+                    attribute_name = 'reabuttonled'
+                else:
+                    # otherwise the address token following the track number
+                    # references the attribute within the track
+                    # so by convention the class name in lowercase
+                    attribute_name = addrlist[track_addr_ind+2]
+
+                cmdinst = getattr(track, attribute_name)
+                if cmdinst is None:
+                    raise ReaException('Track %d has no cmdclass %s', track_number, attribute_name)
+            elif addrlist[1] == "action":
+                # Placeholder for spot to handle action address from daw
+                pass
             else:
-                cmdinst = self.desk.reabuttonled
-        else:
-            msg_string = "%s [%s] %s" % (addr, tags, str(stuff))
-            self.log.warn("ReaOscsession Unhandled osc address: %s", msg_string)
-            return
-        cmdinst.c_d(addrlist, stuff)
+                # addresses not containing track token assumed to target a desk cmdclass
+                attribute_name = addrlist[1]
+                # allow the button magic address to mean the reabuttonled class
+                if attribute_name == 'button':
+                    attribute_name = 'reabuttonled'
+                cmdinst = getattr(self.desk, attribute_name)
+                if cmdinst is None:
+                    raise ReaException('Desk has no cmdclass %s', attribute_name)
+
+            # if we have located a cmd class instance then pass the OSC message to it
+            cmdinst.c_d(addrlist, stuff)
+
+        except ReaException:
+            self.log.error('Internal Reacontrol Error responding to daw_to_desk OSC message', exc_info=True)
+        except:
+            self.log.error('Unhandled Error responding to daw_to_desk OSC message', exc_info=True)
 
     # Threaded methods
     def _manage_daemon_client(self):
@@ -1913,7 +1886,13 @@ class _ReaOscsession(object):
             self.daemon_client = None
             self.daemon_client_is_connected = False
             self.is_closing = False
+        except:
+            self.log.error('Error during init of OSC session', exc_info=True)
+            raise
 
+    def start(self):
+        """start the session - like part 2 of init"""
+        try:
             # Start a thread to manage the connection to the control24d
             self.thread_daemon_client = threading.Thread(
                 target=self._manage_daemon_client,
@@ -1940,7 +1919,7 @@ class _ReaOscsession(object):
 
             self.thread_daemon_client.join()
         except:
-            self.log.error('Error in osc client', exc_info=True)
+            self.log.error('Error caught by Outer error trap for OSC client session threads:', exc_info=True)
             raise
 
     def __str__(self):

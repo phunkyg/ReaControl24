@@ -204,7 +204,20 @@ In Windows, close the Command Prompt window where you launched the program.
 By way of an apology, may this bring levity to your day
 "Son where we're going, we don't need no tests"
 
-Seriously though, without a dedicated piece of test hardware, this isn't easy. Some effort may be made to emulate traffic in the future!
+Seriously though, without a dedicated piece of test hardware, this isn't easy.
+
+Some small inroads have been made in this area:
+
+* The file emulator.py will act like a pseduo desk and accounce itself to ReaControl. Once connected it will toggle a mute button every few seconds
+
+
+If you are frequently testing OSC mapping file edits, it is very useful to symlink your OSC files instead of copying them, e.g.
+
+```
+$ ln -s /Users/you/Documents/ReaControl24/Control24.ReaperOSC /Users/you/Library/Application\ Support/REAPER/OSC/Control24.ReaperOSC
+$ ln -s /Users/you/Documents/ReaControl24/ProControl.ReaperOSC /Users/you/Library/Application\ Support/REAPER/OSC/ProControl.ReaperOSC
+```
+
 
 ### Coding standards
 
@@ -275,3 +288,21 @@ All other intellectual property rights remain with the original owners.
 
 * **2mmi** - *Initial Idea, inspiration and saviour of us all
 
+
+## OSC SChema
+
+Notes:
+    Channel Strips are referred to as 'track'
+
+/track/@                        Reference to a track object with next token being the number
+    /<classattribute>           Reference to a CmdClass within a track object                      
+        reabuttonled            CmdClass controlling LED buttons
+        etc
+
+/clock
+
+/<classattribute>               Reference to CmdClasses in the desk object
+    clock                       Reference the the ReaClock i.e. the clock display
+    reabuttonled                CmdClass controlling LED buttons that aren't in a track
+
+/action                         Numbered action - not yet implemented

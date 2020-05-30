@@ -25,12 +25,12 @@ MAPPING_TREE = {
         'TrackByteMask': 0x1F,
         'Children': {
             0x00: {
-                'Address': 'c24fader',
-                'CmdClass': 'C24fader'
+                'Address': 'reafader',
+                'CmdClass': 'reafader'
             },
             0x40: {
-                'Address': 'c24vpot',
-                'CmdClass': 'C24vpot'
+                'Address': 'reavpot',
+                'CmdClass': 'reavpot'
             }
         }
     },  # END L1 Dials/Faders
@@ -746,12 +746,12 @@ MAPPING_TREE = {
                             0x12: {
                                 'Address': 'Scrub',
                                 'LED': True,
-                                'CmdClass': 'C24jpot'
+                                'CmdClass': 'ReaJpot'
                             },
                             0x13: {
                                 'Address': 'Shuttle',
                                 'LED': True,
-                                'CmdClass': 'C24jpot'
+                                'CmdClass': 'ReaJpot'
                             }
                         }
                     },
@@ -920,9 +920,9 @@ MAPPING_TREE = {
                         'LED': True
                     },
                     0x05: {
-                        'Address': 'c24automode',
+                        'Address': 'reaautomode',
                         'Zone': 'Channel',
-                        'CmdClass': 'C24automode'
+                        'CmdClass': 'reaautomode'
                     },
                     0x06: {
                         'Address': 'ChannelSelect',
@@ -942,7 +942,7 @@ MAPPING_TREE = {
                     0x09: {
                         'Address': 'Touch',
                         'Zone': 'Faders',
-                        'CmdClass': 'C24fader'
+                        'CmdClass': 'reafader'
                     },
                     0x0B: {
                         'Address': 'Peak',

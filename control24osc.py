@@ -170,10 +170,10 @@ class C24Oscsession(_ReaOscsession):
 
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
-        self.log = None
+        super(C24Oscsession, self).__init__(opts, networks, pipe)
         self.desk = C24desk(self)
         self.mapping_tree = control24map.MAPPING_TREE
-        super(C24Oscsession, self).__init__(opts, networks, pipe)
+        self.start()
 
 
 # main program if run in standalone mode

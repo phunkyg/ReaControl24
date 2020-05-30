@@ -55,53 +55,36 @@ FORWARD b/button/command/Transport/Forward
 SCRUB r/scrub
 PLAY_RATE r/playrate/rotary
 
-MASTER_VOLUME s/track/procscribstrip/volume/25
+MASTER_VOLUME s/track/@/25/procscribstrip/volume
 
-TRACK_NAME s/track/procscribstrip/name/@
-TRACK_MUTE t/button/track/Mute/@
-TRACK_SOLO t/button/track/Solo/@
-TRACK_REC_ARM t/button/track/RecArm/@
+TRACK_NAME s/track/@/procscribstrip/name
+TRACK_MUTE t/button/track/@/Mute
+TRACK_SOLO t/button/track/@/Solo
+TRACK_REC_ARM t/button/track/@/RecArm
 
-TRACK_SELECT t/button/track/ChannelSelect/@
+TRACK_SELECT t/button/track/@/ChannelSelect
 
-TRACK_VOLUME n/track/c24fader/@ s/track/procscribstrip/volume/@
-TRACK_PAN n/track/c24vpot/@ s/track/procscribstrip/pan/@
+TRACK_VOLUME n/track/@/reafader s/track/@/procscribstrip/volume
+TRACK_PAN n/track/@/reavpot s/track/@/procscribstrip/pan
 
-TRACK_VOLUME_TOUCH b/button/track/Touch/@
+TRACK_VOLUME_TOUCH b/button/track/@/Touch
 
-TRACK_VU_L n/track/c24vumeter/0/@
-TRACK_VU_R n/track/c24vumeter/1/@
+TRACK_VU_L n/track/@/reavumeter/0
+TRACK_VU_R n/track/@/reavumeter/1
 
-TRACK_SEND_VOLUME s/track/procscribstrip/send/volume/@
+TRACK_SEND_VOLUME s/track/@/procscribstrip/send/volume
 
-TRACK_AUTO_TRIM t/track/c24automode/trim/@
-TRACK_AUTO_READ t/track/c24automode/read/@
-TRACK_AUTO_LATCH t/track/c24automode/latch/@
-TRACK_AUTO_TOUCH t/track/c24automode/touch/@
-TRACK_AUTO_WRITE t/track/c24automode/write/@
+TRACK_AUTO_TRIM t/track/@/reaautomode/trim
+TRACK_AUTO_READ t/track/@/reaautomode/read
+TRACK_AUTO_LATCH t/track/@/reaautomode/latch
+TRACK_AUTO_TOUCH t/track/@/reaautomode/touch
+TRACK_AUTO_WRITE t/track/@/reaautomode/write
 
-FX_PRESET s/track/procscribstrip/info/@
-FX_EQ_OPEN_UI t/button/track/EQ/@
+FX_PRESET s/track/@/procscribstrip/info
+FX_EQ_OPEN_UI t/button/track/@/EQ
 
 DEVICE_PREV_TRACK_BANK t/button/command/EditMode+Function+Banks/Left
 DEVICE_NEXT_TRACK_BANK t/button/command/EditMode+Function+Banks/Right
-
-
-# these send MIDI to the vkb MIDI input. parameters are raw MIDI.
-
-# for notes, if two, first wildcard is channel (0-15). MIDI note number is required (as decimal integer only!)
-# if parameter value is 0, note-off, otherwise note-on
-VKB_MIDI_NOTE i/vkb_midi/@/note/@ f/vkb_midi/@/note/@ i/vkb_midi/note/@ f/vkb_midi/note/@
-# similar, but for 0xA0 (poly aftertouch)
-VKB_MIDI_POLYAFTERTOUCH i/vkb_midi/@/polyaftertouch/@ f/vkb_midi/@/polyaftertouch/@ i/vkb_midi/polyaftertouch/@ f/vkb_midi/polyaftertouch/@
-# for CCs, if two, first wildcard is channel (0-15). MIDI CC number is required (as decimal integer only!)
-VKB_MIDI_CC i/vkb_midi/@/cc/@ f/vkb_midi/@/cc/@ i/vkb_midi/cc/@ f/vkb_midi/cc/@ 
-# program change (0xC0) can take channel as wildcard, or value only
-VKB_MIDI_PROGRAM i/vkb_midi/@/program f/vkb_midi/@/program i/vkb_midi/program f/vkb_midi/program
-# channel pressure (aftertouch) (0xD0) can take channel as wildcard, or value only
-VKB_MIDI_CHANNELPRESSURE i/vkb_midi/@/channelpressure f/vkb_midi/@/channelpressure i/vkb_midi/channelpressure f/vkb_midi/channelpressure
-# pitch can take channel as wildcard, or value only
-VKB_MIDI_PITCH i/vkb_midi/@/pitch f/vkb_midi/@/pitch i/vkb_midi/pitch f/vkb_midi/pitch
 
 
 #/vkb_midi/0/cc/90 [63]
