@@ -52,8 +52,8 @@ SOLO_RESET b/button/command/utility_misc_meterselect_automationenable/SoloClear
 REWIND b/button/command/Transport/Rewind
 FORWARD b/button/command/Transport/Forward
 
-SCRUB r/scrub
-PLAY_RATE r/playrate/rotary
+SCRUB r/jpot/scrub
+PLAY_RATE r/jpot/playrate/rotary
 
 MASTER_VOLUME s/track/9/procscribstrip/volume
 
@@ -71,6 +71,8 @@ TRACK_VOLUME_TOUCH b/button/track/@/Touch
 
 TRACK_VU_L n/track/@/reavumeter/0
 TRACK_VU_R n/track/@/reavumeter/1
+MASTER_VU_L n/track/9/reavumeter/0
+MASTER_VU_R n/track/9/reavumeter/1
 
 TRACK_SEND_VOLUME s/track/@/procscribstrip/send/volume
 

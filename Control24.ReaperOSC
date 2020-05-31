@@ -21,18 +21,18 @@ DEVICE_EQ INSERT
 
 DEVICE_ROTARY_CENTER 0.5
 
-SCROLL_X- b/scroll/CursorLeft
-SCROLL_X+ b/scroll/CursorRight
-SCROLL_Y- b/scroll/CursorUp
-SCROLL_Y+ b/scroll/CursorDown
-ZOOM_X- b/zoom/CursorLeft
-ZOOM_X+ b/zoom/CursorRight
-ZOOM_Y- b/zoom/CursorUp
-ZOOM_Y+ b/zoom/CursorDown
-DEVICE_PREV_FX b/fxcursor/CursorLeft
-DEVICE_NEXT_FX b/fxcursor/CursorRight
-FX_PREV_PRESET b/fxcursor/CursorUp
-FX_NEXT_PRESET b/fxcursor/CursorDown
+SCROLL_X- b/reanav/scroll/CursorLeft
+SCROLL_X+ b/reanav/scroll/CursorRight
+SCROLL_Y- b/reanav/scroll/CursorUp
+SCROLL_Y+ b/reanav/scroll/CursorDown
+ZOOM_X- b/reanav/zoom/CursorLeft
+ZOOM_X+ b/reanav/zoom/CursorRight
+ZOOM_Y- b/reanav/zoom/CursorUp
+ZOOM_Y+ b/reanav/zoom/CursorDown
+DEVICE_PREV_FX b/reanav/fxcursor/CursorLeft
+DEVICE_NEXT_FX b/reanav/fxcursor/CursorRight
+FX_PREV_PRESET b/reanav/fxcursor/CursorUp
+FX_NEXT_PRESET b/reanav/fxcursor/CursorDown
 
 # All the clock values for 4 switchable modes
 SAMPLES s/clock/samples
@@ -40,50 +40,50 @@ FRAMES s/clock/frames
 TIME s/clock/time
 BEAT s/clock/beat
 
-METRONOME t/reabuttonled/command/EditMode+Function+Banks/Select
-REPLACE t/reabuttonled/command/Transport/Audition
+METRONOME t/button/command/EditMode+Function+Banks/Select
+REPLACE t/button/command/Transport/Audition
 
-RECORD t/reabuttonled/command/Transport/Record
-STOP b/reabuttonled/command/Transport/Stop
-PLAY t/reabuttonled/command/Transport/Play
+RECORD t/button/command/Transport/Record
+STOP b/button/command/Transport/Stop
+PLAY t/button/command/Transport/Play
 
 
-AUTO_REC_ARM t/reabuttonled/command/utility_misc_meterselect_automationenable/master_rec
-SOLO_RESET b/reabuttonled/command/utility_misc_meterselect_automationenable/SoloClear
-ANY_SOLO t/reabuttonled/command/utility_misc_meterselect_automationenable/SoloSafe
+AUTO_REC_ARM t/button/command/utility_misc_meterselect_automationenable/master_rec
+SOLO_RESET b/button/command/utility_misc_meterselect_automationenable/SoloClear
+ANY_SOLO t/button/command/utility_misc_meterselect_automationenable/SoloSafe
 
-REWIND b/reabuttonled/command/Transport/Rewind
-FORWARD b/reabuttonled/command/Transport/Forward
+REWIND b/button/command/Transport/Rewind
+FORWARD b/button/command/Transport/Forward
 
-REWIND_FORWARD_SETLOOP t/reabuttonled/command/Transport/LoopRecord
+REWIND_FORWARD_SETLOOP t/button/command/Transport/LoopRecord
 #Following seems to have no effect
-REWIND_FORWARD_BYMARKER t/reabuttonled/command/Transport/ExtTrans
-REPEAT t/reabuttonled/command/Transport/LoopPlay
+REWIND_FORWARD_BYMARKER t/button/command/Transport/ExtTrans
+REPEAT t/button/command/Transport/LoopPlay
 
-#GOTO_MARKER b/reabuttonled/command/@
-GOTO_REGION b/reabuttonled/command/@
+#GOTO_MARKER b/button/command/@
+GOTO_REGION b/button/command/@
 
-SCRUB r/scrub
-PLAY_RATE r/playrate/rotary
+SCRUB r/jpot/scrub
+PLAY_RATE r/jpot/playrate/rotary
 
-MASTER_VOLUME s/track/25/Reascribstrip/volume
+MASTER_VOLUME s/track/25/c24scribstrip/volume
 
-TRACK_NAME s/track/@/Reascribstrip/name
-TRACK_MUTE t/reabuttonled/track/@/Mute
-TRACK_SOLO t/reabuttonled/track/@/Solo
-TRACK_REC_ARM t/reabuttonled/track/@/RecArm
+TRACK_NAME s/track/@/c24scribstrip/name
+TRACK_MUTE t/button/track/@/Mute
+TRACK_SOLO t/button/track/@/Solo
+TRACK_REC_ARM t/button/track/@/RecArm
 
-TRACK_SELECT t/reabuttonled/track/@/ChannelSelect
+TRACK_SELECT t/button/track/@/ChannelSelect
 
-TRACK_VOLUME n/track/@/reafader s/track/@/reascribstrip/volume
-TRACK_PAN n/track/@/reavpot s/track/@/reascribstrip/pan
+TRACK_VOLUME n/track/@/reafader s/track/@/c24scribstrip/volume
+TRACK_PAN n/track/@/reavpot s/track/@/c24scribstrip/pan
 
 TRACK_VU_L n/track/@/reavumeter/0
 TRACK_VU_R n/track/@/reavumeter/1
 MASTER_VU_L n/track/25/reavumeter/0
 MASTER_VU_R n/track/25/reavumeter/1
 
-TRACK_SEND_VOLUME s/track/@/reascribstrip/send/volume
+TRACK_SEND_VOLUME s/track/@/c24scribstrip/send/volume
 
 TRACK_AUTO_TRIM t/track/@/reaautomode/trim
 TRACK_AUTO_READ t/track/@/reaautomode/read
@@ -91,14 +91,14 @@ TRACK_AUTO_LATCH t/track/@/reaautomode/latch
 TRACK_AUTO_TOUCH t/track/@/reaautomode/touch
 TRACK_AUTO_WRITE t/track/@/reaautomode/write
 
-FX_PRESET s/track/@/reascribstrip/info
-FX_EQ_OPEN_UI t/reabuttonled/track/@/EQ
-FX_INST_OPEN_UI t/reabuttonled/track/@/Dynamics
+FX_PRESET s/track/@/c24scribstrip/info
+FX_EQ_OPEN_UI t/button/track/@/EQ
+FX_INST_OPEN_UI t/button/track/@/Dynamics
 #Next one doesn’t seem to work very well
-FX_OPEN_UI b/reabuttonled/track/@/Inserts
+FX_OPEN_UI b/button/track/@/Inserts
 
-DEVICE_PREV_TRACK_BANK t/reabuttonled/command/EditMode+Function+Banks/Left
-DEVICE_NEXT_TRACK_BANK t/reabuttonled/command/EditMode+Function+Banks/Right
+DEVICE_PREV_TRACK_BANK t/button/command/EditMode+Function+Banks/Left
+DEVICE_NEXT_TRACK_BANK t/button/command/EditMode+Function+Banks/Right
 
 
 # these send MIDI to the vkb MIDI input. parameters are raw MIDI.
@@ -139,55 +139,55 @@ ACTION_RELATIVE f/action/@/cc/relative
 #ACTION_RELATIVE f/action/974/cc/relative
  
 # Looking good
-MASTER_PAN s/track/Reascribstrip/pan/30
-LAST_TOUCHED_FX_PARAM_NAME s/track/Reascribstrip/ltfxpn/30
-LAST_TOUCHED_FX_PARAM_VALUE s/track/Reascribstrip/ltfxpv/31
+MASTER_PAN s/track/c24scribstrip/pan/30
+LAST_TOUCHED_FX_PARAM_NAME s/track/30/c24scribstrip/ltfxpn
+LAST_TOUCHED_FX_PARAM_VALUE s/track/31/c24scribstrip/ltfxpv
 
 # Looking odd
 #Says 'balance' etc. when pan has 2 knobs
-#TRACK_PAN2 s/track/Reascribstrip/pan2/@
+#TRACK_PAN2 s/track/@/c24scribstrip/pan2
 
 #Needs the send number 
-#TRACK_SEND_NAME s/track/@/Reascribstrip/send_name/@
-#TRACK_SEND_VOLUME s/track/@/Reascribstrip/name/@
-#TRACK_SEND_PAN s/track/@/Reascribstrip/send_pan/@
-#TRACK_RECV_NAME s/track/@/Reascribstrip/recv_name/@
-#TRACK_RECV_VOLUME s/track/@/Reascribstrip/rec_name/@
-#TRACK_RECV_PAN s/track/@/Reascribstrip/recv_pan/@
+#TRACK_SEND_NAME s/track/@/c24scribstrip/send_name/@
+#TRACK_SEND_VOLUME s/track/@/c24scribstrip/name/@
+#TRACK_SEND_PAN s/track/@/c24scribstrip/send_pan/@
+#TRACK_RECV_NAME s/track/@/c24scribstrip/recv_name/@
+#TRACK_RECV_VOLUME s/track/@/c24scribstrip/rec_name/@
+#TRACK_RECV_PAN s/track/@/c24scribstrip/recv_pan/@
 
 # Experimental
 
-MARKER_NAME s/track/30/Reascribstrip/mna
-MARKER_NUMBER s/track/31/Reascribstrip/mnu
-REGION_NAME s/track/30/Reascribstrip/rna
-REGION_NUMBER s/track/31/Reascribstrip/rnu
-LAST_MARKER_NAME s/track/30/Reascribstrip/lmna
-LAST_MARKER_NUMBER s/track/31/Reascribstrip/lmnu
-LAST_REGION_NAME s/track/30/Reascribstrip/lrna
-LAST_REGION_NUMBER s/track/31/Reascribstrip/lrnu
+MARKER_NAME s/track/30/c24scribstrip/mna
+MARKER_NUMBER s/track/31/c24scribstrip/mnu
+REGION_NAME s/track/30/c24scribstrip/rna
+REGION_NUMBER s/track/31/c24scribstrip/rnu
+LAST_MARKER_NAME s/track/30/c24scribstrip/lmna
+LAST_MARKER_NUMBER s/track/31/c24scribstrip/lmnu
+LAST_REGION_NAME s/track/30/c24scribstrip/lrna
+LAST_REGION_NUMBER s/track/31/c24scribstrip/lrnu
 
-TRACK_PAN_MODE s/track/@/Reascribstrip/pan_mode
+TRACK_PAN_MODE s/track/@/c24scribstrip/pan_mode
 
-TRACK_AUTO s/track/@/Reascribstrip/auto
+TRACK_AUTO s/track/@/c24scribstrip/auto
 
-FX_NAME s/track/@/Reascribstrip/fxna
-FX_NUMBER s/track/@/Reascribstrip/fxnu
+FX_NAME s/track/@/c24scribstrip/fxna
+FX_NUMBER s/track/@/c24scribstrip/fxnu
 
-FX_PRESET s/track/@/Reascribstrip/fxpr
+FX_PRESET s/track/@/c24scribstrip/fxpr
 
-FX_PARAM_NAME s/track/@/Reascribstrip/fxpna
-FX_PARAM_VALUE s/track/@/Reascribstrip/fxpva
+FX_PARAM_NAME s/track/@/c24scribstrip/fxpna
+FX_PARAM_VALUE s/track/@/c24scribstrip/fxpva
 
-FX_INST_NAME s/track/@/Reascribstrip/fxinstn
-FX_INST_PRESET s/track/@/Reascribstrip/fxinstp
-FX_INST_PARAM_NAME s/track/@/Reascribstrip/fxinstpn
-FX_INST_PARAM_VALUE s/track/@/Reascribstrip/fxinstpv
+FX_INST_NAME s/track/@/c24scribstrip/fxinstn
+FX_INST_PRESET s/track/@/c24scribstrip/fxinstp
+FX_INST_PARAM_NAME s/track/@/c24scribstrip/fxinstpn
+FX_INST_PARAM_VALUE s/track/@/c24scribstrip/fxinstpv
 
-LAST_TOUCHED_FX_TRACK_NAME s/track/@/Reascribstrip/ltfxtn
-LAST_TOUCHED_FX_TRACK_NUMBER s/track/@/Reascribstrip/ltfxtnu
-LAST_TOUCHED_FX_NAME s/track/@/Reascribstrip/ltfxn
-LAST_TOUCHED_FX_NUMBER s/track/@/Reascribstrip/ltfxnu
+LAST_TOUCHED_FX_TRACK_NAME s/track/@/c24scribstrip/ltfxtn
+LAST_TOUCHED_FX_TRACK_NUMBER s/track/@/c24scribstrip/ltfxtnu
+LAST_TOUCHED_FX_NAME s/track/@/c24scribstrip/ltfxn
+LAST_TOUCHED_FX_NUMBER s/track/@/c24scribstrip/ltfxnu
 
 # added by Disruptormon - 28/09/18
-#ACTION action/40078 t/reabuttonled/command/Window+ZoomPresets+Navigation/Mix
-#ACTION action/40259 t/reabuttonled/command/Window+ZoomPresets+Navigation/Trans
+#ACTION action/40078 t/button/command/Window+ZoomPresets+Navigation/Mix
+#ACTION action/40259 t/button/command/Window+ZoomPresets+Navigation/Trans

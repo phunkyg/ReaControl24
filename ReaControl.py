@@ -625,7 +625,7 @@ class DeviceSession(object):
         log = logging.getLogger(__name__)
         device = self.bcast_data.device
         if device == 'CNTRL|24':
-            target = control24_client.C24oscsession
+            target = control24_client.C24Oscsession
             self.is_supported_device = True
         elif device == 'MAINUNIT':
             target = procontrol_client.ProCoscsession

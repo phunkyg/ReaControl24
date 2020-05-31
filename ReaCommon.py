@@ -955,11 +955,12 @@ class _ReaTrack(ReaBase):
         # TODO discover if this is needed
         self.reabuttonled = ReaButtonLed(self.desk, self)
 
+        # Assuming 28 is always the virtual track for all jpots
         if self.track_number == 28:
             self.reavpot = ReaJpot(self)
             # Allow access from both 'virtual' track 28 AND desk object
             # as it physically belongs there
-            self.desk.jpot = self.vpot
+            self.desk.jpot = self.reavpot
 
 
 class _ReaScribStrip(ReaBase):
@@ -1697,7 +1698,7 @@ class _ReaOscsession(object):
                 track_number = int(addrlist[track_addr_ind+1]) - 1
                 track = self.desk.get_track(track_number)
                 if track is None:
-                    raise ReaException('No track object %d', track_number)
+                    raise ReaException('No track object {}'.format(track_number))
 
                 if 'button' in addrlist:
                     # track buttons are a special case and have a magic token
@@ -1708,9 +1709,9 @@ class _ReaOscsession(object):
                     # so by convention the class name in lowercase
                     attribute_name = addrlist[track_addr_ind+2]
 
-                cmdinst = getattr(track, attribute_name)
+                cmdinst = getattr(track, attribute_name, None)
                 if cmdinst is None:
-                    raise ReaException('Track %d has no cmdclass %s', track_number, attribute_name)
+                    raise ReaException('Track {} has no cmdclass {}'.format(track_number, attribute_name))
             elif addrlist[1] == "action":
                 # Placeholder for spot to handle action address from daw
                 pass
@@ -1720,15 +1721,15 @@ class _ReaOscsession(object):
                 # allow the button magic address to mean the reabuttonled class
                 if attribute_name == 'button':
                     attribute_name = 'reabuttonled'
-                cmdinst = getattr(self.desk, attribute_name)
+                cmdinst = getattr(self.desk, attribute_name, None)
                 if cmdinst is None:
-                    raise ReaException('Desk has no cmdclass %s', attribute_name)
+                    raise ReaException('Desk has no cmdclass {}'.format(attribute_name))
 
             # if we have located a cmd class instance then pass the OSC message to it
             cmdinst.c_d(addrlist, stuff)
 
         except ReaException:
-            self.log.error('Internal Reacontrol Error responding to daw_to_desk OSC message', exc_info=True)
+            self.log.warn('Internal Reacontrol Error responding to daw_to_desk OSC message', exc_info=True)
         except:
             self.log.error('Unhandled Error responding to daw_to_desk OSC message', exc_info=True)
 
