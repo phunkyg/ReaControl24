@@ -903,7 +903,8 @@ class _ReaDesk(ReaBase):
         self.modemgr.set_mode(mode)
         for track in self.tracks:
             track.modemgr.set_mode(mode)
-            if hasattr(track, 'reascribstrip'):
+            attr = getattr(track, 'reascribstrip', None)
+            if attr:
                 track.reascribstrip.restore_desk_display()
 
     def get_track(self, track):
@@ -925,7 +926,7 @@ class _ReaDesk(ReaBase):
                 scrib = track.reascribstrip
                 psn = track_number * scrib.size
                 piece = longtext[psn:psn + scrib.size]
-                scrib.c_d(['rea4scribstrip', 'long'], [piece])
+                scrib.c_d(['reascribstrip', 'long'], [piece])
 
     def instantiate_tracks(self, track_class):
         """Build the tracks list out of the supplied class

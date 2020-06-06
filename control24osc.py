@@ -79,6 +79,8 @@ class C24Track(_ReaTrack):
                 self.desk.real_channels + self.desk.virtual_channels
         ):
             self.c24scribstrip = C24scribstrip(self)
+            # maintain a generic reference too
+            self.reascribstrip = self.c24scribstrip
 
 
 class C24desk(_ReaDesk):

@@ -69,6 +69,7 @@ class ProCTrack(_ReaTrack):
         # Place a scribble strip on main channel strips
         if self.track_number <= self.desk.real_channels:
             self.procscribstrip = ProCscribstrip(self)
+            self.reascribstrip = self.procscribstrip
 
 
 class ProCdesk(_ReaDesk):
