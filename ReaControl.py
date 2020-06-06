@@ -622,6 +622,7 @@ class DeviceSession(object):
 
     #--MULTI new process launcher
     def start_client(self):
+        """start the appropriate client for the device"""
         log = logging.getLogger(__name__)
         device = self.bcast_data.device
         if device == 'CNTRL|24':
