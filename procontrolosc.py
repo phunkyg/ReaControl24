@@ -126,8 +126,8 @@ class ProCscribstrip(_ReaScribStrip):
             ProCscribstrip.digits,
             ProCscribstrip.bank,
             ProCscribstrip.defaultaddress)
-        # TODO haven't got to doing anything fancy different right now
-        # just making sure the 8 (or n) digit capability is retained
+        # TODO = total guess - refer back to ProC scribstrip diferences.
+        self.cmdbytes[5] = 0x01
 
 
 # TODO, unless specifics are needed the next few classes can be collapsed by refactoring the

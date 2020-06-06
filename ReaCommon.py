@@ -993,7 +993,7 @@ class _ReaScribStrip(ReaBase):
         self.last_update = time.time()
 
         # Set up the byte array for initial popn
-        bytes = [0xf0, 0x13, 0x01, 0x40, self.track.track_number] + ([0x00] * self.digits) + [0xf7]
+        bytes = [0xf0, 0x13, 0x01, 0x40, self.track.track_number, 0x00] + ([0x00] * self.digits) + [0xf7]
         # Copy to the ctypes bytes
         for ind, byt in enumerate(bytes):
             self.cmdbytes[ind] = byt
