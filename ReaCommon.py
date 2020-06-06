@@ -1001,7 +1001,8 @@ class _ReaScribStrip(ReaBase):
         # Initialise the text dictionary with a default element
         # It should get overwritten once this OSC address is
         # populated by the DAW.
-        self.text = {defaultaddress: defaulttext}
+        addrdef = defaultaddress.replace('@', str(self.track.track_number))
+        self.text = {addrdef: defaulttext}
 
         # Set up timer details for temporary values display returning
         # to the current mode display after a few seconds
