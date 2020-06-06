@@ -1653,10 +1653,11 @@ class _ReaOscsession(object):
                         # Call the desk_to_computer method of the class
                         inst.d_c(parsed_cmd)
                     except AttributeError:
-                        self.log.warn(
+                        self.log.error(
                             'Looking for mapped cmd_class but not found. The map is incorrect. Track: %s Class: %s',
                             str(track_number),
-                            cmd_class
+                            cmd_class,
+                            exc_info=True
                         )
                     except:
                         self.log.error(
