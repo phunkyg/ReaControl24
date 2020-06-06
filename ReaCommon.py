@@ -1284,7 +1284,7 @@ class _ReaVpot(ReaBase):
         """Increment/decrement the pan factor from command bytes"""
         potdir = vpot.cmdbytes_d_c[2] - 64
         potvel = vpot.cmdbytes_d_c[3]
-        if vpot.track.desk.c24modifiers.command:
+        if vpot.track.desk.reamodifiers.command:
             amt = vpot.fine
         else:
             amt = vpot.coarse
@@ -1647,19 +1647,18 @@ class _ReaOscsession(object):
                     # Most class handlers will be within a track
                     # but if not then try the desk object
                     try:
-                        inst = getattr(track or self.desk, cmd_class.lower())
+                        inst = getattr(track or self.desk, cmd_class.lower(), None)
+                        if not inst:
+                            self.log.warn(
+                                'Looking for mapped cmd_class but not found. The map is incorrect. Track: %s Class: %s',
+                                str(track_number),
+                                cmd_class
+                            )
                         # Call the desk_to_computer method of the class
                         inst.d_c(parsed_cmd)
-                    except AttributeError:
-                        self.log.error(
-                            'Looking for mapped cmd_class but not found. The map is incorrect. Track: %s Class: %s',
-                            str(track_number),
-                            cmd_class,
-                            exc_info=True
-                        )
                     except:
                         self.log.error(
-                            'Error looking up cmd_class. Track: %s Class: %s',
+                            'Error doing d_c in cmd_class. Track: %s Class: %s',
                             str(track_number),
                             cmd_class,
                             exc_info=True
