@@ -55,7 +55,7 @@ class ProCTrack(_ReaTrack):
         # super gives us the common layout, now we add Pro Control specifics
         # Only channel strip setup specific to Control24 goes here
         if self.track_number < self.desk.real_channels:
-            self.log.debug('Adding C24 specifics to track instance')
+            self.log.debug('Adding ProC specifics to track instance')
             self.reafader = ProCfader(self)
             self.reavpot = ProCvpot(self)
             self.reaautomode = ProCautomode(self.desk, self)
