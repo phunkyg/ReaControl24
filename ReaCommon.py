@@ -932,6 +932,7 @@ class _ReaDesk(ReaBase):
         and to the length specified"""
         # Set up the child track objects
         # At the moment all are created equal
+        self.log.debug('Desk instantiating tracks with class: %s', track_class.__class__)
         self.tracks = [track_class(self, track_number)
                        for track_number in range(0, self.real_channels + self.virtual_channels)]
 
