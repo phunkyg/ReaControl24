@@ -126,7 +126,7 @@ class C24scribstrip(_ReaScribStrip):
     this version specific to the Control24 """
 
     digits = 4
-    defaultaddress = '/track/number'
+    defaultaddress = '/track/@/number'
     bank = 0
 
     def __init__(self, track):
@@ -142,7 +142,7 @@ class C24scribstrip(_ReaScribStrip):
 
 class C24vpot(_ReaVpot):
     """Class for the Control24 Virtual Pots"""
-    defaultaddress = '/track/c24vpot/{}'
+    defaultaddress = '/track/{}/reavpot'
 
     def __init__(self, track):
         super(C24vpot, self).__init__(track, C24vpot.defaultaddress)
@@ -150,7 +150,7 @@ class C24vpot(_ReaVpot):
 
 class C24fader(_ReaFader):
     """Class for the Control24 Faders"""
-    defaultaddress = '/track/c24fader/{}'
+    defaultaddress = '/track/{}/reafader'
 
     def __init__(self, track):
         super(C24fader, self).__init__(track, C24fader.defaultaddress)
@@ -159,7 +159,7 @@ class C24fader(_ReaFader):
 class C24automode(_ReaAutomode):
     """ class to deal with the automation toggle on a track
     with the various LEDs and modes exchanged between DAW and desk"""
-    defaultaddress = '/track/c24automode/{}/{}'
+    defaultaddress = '/track/{}/reaautomode/{}'
 
     def __init__(self, desk, track):
         super(C24automode, self).__init__(desk, track, C24automode.defaultaddress)

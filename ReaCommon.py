@@ -977,7 +977,7 @@ class _ReaScribStrip(ReaBase):
     # 0x00, 0x00, 0x00, 0x00 = 4 'ascii' chars to display
     # 0xf7             = terminator
 
-    def __init__(self, track, digits, bank, defaultaddress='/track/number'):
+    def __init__(self, track, digits, bank, defaultaddress='/track/@/number'):
         self.track = track
         self.log = track.desk.log
         self.restore_timer = None
@@ -1209,7 +1209,7 @@ class _ReaVpot(ReaBase):
     coarse = float(0.03125)
     fine = float(0.005)
 
-    def __init__(self, track, address='/track/vpot/{}'):
+    def __init__(self, track, address='/track/{}/vpot'):
         self.log = track.desk.log
         self.track = track
         # TODO allow mode switch between dot and fill display
@@ -1303,7 +1303,7 @@ class _ReaFader(ReaBase):
     # TODO move this into this class
     faderscale = ReaBase.calc_faderscale()
 
-    def __init__(self, track, address='/track/fader/{}'):
+    def __init__(self, track, address='/track/{}/fader'):
         self.log = track.desk.log
         self.track = track
         self.gain = None
@@ -1653,14 +1653,14 @@ class _ReaOscsession(object):
                         inst.d_c(parsed_cmd)
                     except AttributeError:
                         self.log.warn(
-                            'Looking for mapped cmd_class but not found. The map is incorrect. Track: %d Class: %s',
-                            track_number,
+                            'Looking for mapped cmd_class but not found. The map is incorrect. Track: %s Class: %s',
+                            str(track_number),
                             cmd_class
                         )
                     except:
                         self.log.error(
-                            'Error looking up cmd_class. Track: %d Class: %s',
-                            track_number,
+                            'Error looking up cmd_class. Track: %s Class: %s',
+                            str(track_number),
                             cmd_class,
                             exc_info=True
                         )
