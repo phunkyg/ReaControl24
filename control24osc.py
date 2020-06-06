@@ -88,18 +88,18 @@ class C24desk(_ReaDesk):
     busvus = 1
     deskmodes = {
         'Values': {
-            'address': '/track/c24scribstrip/volume',
+            'address': '/track/@/c24scribstrip/volume',
 
         },
         'Group': {
             'toggle': True
         },
         'Names': {
-            'address': '/track/c24scribstrip/name',
+            'address': '/track/@/c24scribstrip/name',
             'default': True
         },
         'Info': {
-            'address': '/track/c24scribstrip/pan'
+            'address': '/track/@/c24scribstrip/pan'
         }
     }
 

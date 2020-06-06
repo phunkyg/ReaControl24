@@ -139,7 +139,7 @@ ACTION_RELATIVE f/action/@/cc/relative
 #ACTION_RELATIVE f/action/974/cc/relative
  
 # Looking good
-MASTER_PAN s/track/c24scribstrip/pan/30
+MASTER_PAN s/track/30/c24scribstrip/pan
 LAST_TOUCHED_FX_PARAM_NAME s/track/30/c24scribstrip/ltfxpn
 LAST_TOUCHED_FX_PARAM_VALUE s/track/31/c24scribstrip/ltfxpv
 

@@ -1101,8 +1101,8 @@ class ReaJpot(ReaBase):
         # TODO use the mode manager class
         self.mode = None
         self.modes = {
-            'Scrub': {'address': '/scrub', 'default': True},
-            'Shuttle': {'address': '/playrate/rotary'}
+            'Scrub': {'address': '/jpot/scrub', 'default': True},
+            'Shuttle': {'address': '/jpot/playrate/rotary'}
         }
         for key, value in self.modes.iteritems():
             value['msg'] = OSC.OSCMessage(value['address'])
