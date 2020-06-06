@@ -908,7 +908,7 @@ class _ReaDesk(ReaBase):
 
     def get_track(self, track):
         """Safely access both the main tracks and any virtual
-        ones in the address above real tracks """
+        ones in the address space above real tracks """
         if track is None:
             return None
         try:
@@ -930,9 +930,7 @@ class _ReaDesk(ReaBase):
     def instantiate_tracks(self, track_class):
         """Build the tracks list out of the supplied class
         and to the length specified"""
-        # Set up the child track objects
-        # At the moment all are created equal
-        self.log.debug('Desk instantiating tracks with class: %s', track_class.__class__)
+        self.log.debug('Desk instantiating tracks with class: %s', track_class.__name__)
         self.tracks = [track_class(self, track_number)
                        for track_number in range(0, self.real_channels + self.virtual_channels)]
 
