@@ -1001,7 +1001,7 @@ class _ReaScribStrip(ReaBase):
         # Initialise the text dictionary with a default element
         # It should get overwritten once this OSC address is
         # populated by the DAW.
-        addrdef = defaultaddress.replace('@', str(self.track.track_number))
+        addrdef = defaultaddress.replace('@', str(self.track.osctrack_number))
         self.text = {addrdef: defaulttext}
 
         # Set up timer details for temporary values display returning
@@ -1063,6 +1063,12 @@ class _ReaScribStrip(ReaBase):
 
     def c_d(self, addrlist, stuff):
         """Update from DAW text"""
+        # quick hack to turn numbers in track address back to @
+        # so it matches the desk modes address.
+        # TODO - messy!
+        for addr in addrlist:
+            if unicode(addr).isnumeric():
+                addr = '@'
         address = '/'.join(addrlist)
         textvalue = stuff[0]
         self.text[address] = textvalue
