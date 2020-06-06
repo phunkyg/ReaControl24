@@ -43,7 +43,7 @@ DEFAULTS = {
     'oscport': 9124,
     'oscDaw': 9125,
     'auth': 'be_in-control',
-    'loglevel': 'INFO',
+    'loglevel': 'TRACE',    #'INFO',
     'interface': 'en0',
     'logdir': './logs',
     'logformat': '%(asctime)s\t%(name)s\t%(levelname)s\t' +
