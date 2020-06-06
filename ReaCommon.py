@@ -938,7 +938,7 @@ class _ReaDesk(ReaBase):
 
 class _ReaTrack(ReaBase):
     """Track (channel strip) object to contain
-    one each of the bits found in each of the 24 main tracks"""
+    one each of the bits found in each of the main tracks"""
 
     def __init__(self, desk, track_number):
         self.desk = desk
