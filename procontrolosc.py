@@ -55,6 +55,7 @@ class ProCTrack(_ReaTrack):
         # super gives us the common layout, now we add Pro Control specifics
         # Only channel strip setup specific to Control24 goes here
         if self.track_number < self.desk.real_channels:
+            self.log.debug('Adding ProC specifics to track instance')
             self.reafader = ProCfader(self)
             self.reavpot = ProCvpot(self)
             self.reaautomode = ProCautomode(self.desk, self)
@@ -80,18 +81,18 @@ class ProCdesk(_ReaDesk):
     busvus = 1
     deskmodes = {
         'Values': {
-            'address': '/track/procscribstrip/volume',
+            'address': '/track/@/procscribstrip/volume',
 
         },
         'Group': {
             'toggle': True
         },
         'Names': {
-            'address': '/track/procscribstrip/name',
+            'address': '/track/@/procscribstrip/name',
             'default': True
         },
         'Info': {
-            'address': '/track/procscribstrip/pan'
+            'address': '/track/@/procscribstrip/pan'
         }
     }
 
@@ -117,7 +118,7 @@ class ProCscribstrip(_ReaScribStrip):
     this version specific to the Control24 """
 
     digits = 8
-    defaultaddress = '/track/number'
+    defaultaddress = '/track/@/number'
     bank = 0
 
     def __init__(self, track):
@@ -135,7 +136,7 @@ class ProCscribstrip(_ReaScribStrip):
 
 class ProCvpot(_ReaVpot):
     """Class for the Pro Control Virtual Pots"""
-    defaultaddress = '/track/reavpot/{}'
+    defaultaddress = '/track/{}/reavpot'
 
     def __init__(self, track):
         super(ProCvpot, self).__init__(track, ProCvpot.defaultaddress)
@@ -143,7 +144,7 @@ class ProCvpot(_ReaVpot):
 
 class ProCfader(_ReaFader):
     """Class for the Pro Control Faders"""
-    defaultaddress = '/track/reafader/{}'
+    defaultaddress = '/track/{}/reafader'
 
     def __init__(self, track):
         super(ProCfader, self).__init__(track, ProCfader.defaultaddress)
@@ -152,7 +153,7 @@ class ProCfader(_ReaFader):
 class ProCautomode(_ReaAutomode):
     """ class to deal with the automation toggle on a track
     with the various LEDs and modes exchanged between DAW and desk"""
-    defaultaddress = '/track/reaautomode/{}/{}'
+    defaultaddress = '/track/{}/reaautomode/{}'
 
     def __init__(self, desk, track):
         super(ProCautomode, self).__init__(desk, track, ProCautomode.defaultaddress)
