@@ -55,6 +55,8 @@ TIMING_KEEP_ALIVE = 10          # Delta time before a KA to desk is considered d
 TIMING_KEEP_ALIVE_LOOP = 1      # How often to check if a KA is due
 TIMING_BEFORE_ACKT = 0.0008     # Delta between packet arriving and ACK being sent
 TIMING_MAIN_LOOP = 6            # Loop time for main, which does nothing
+TIMING_SHUTDOWN_ACTIONS = 0.5   # bit of wait time when shuttind down
+TIMING_SNIFFER_TIMEOUT = 1000   # milliseconds passed to the pcap timeout
 TIMING_LISTENER_POLL = 2        # Poll time for MP Listener to wait for data
 TIMING_LISTENER_RECONNECT = 1   # Pause before a reconnect attempt is made
 TIMING_WAIT_DESC_ACK = 0.1      # Wait period for desk to ACK after send, before warning is logged
@@ -350,7 +352,7 @@ class Sniffer(threading.Thread):
             name=network,
             promisc=False,
             immediate=False,
-            timeout_ms=500
+            timeout_ms=TIMING_SNIFFER_TIMEOUT
             )
         filtstr = PCAP_FILTER % self.nethandler.mac_computer_str
         self.nethandler.pcap_sess.setfilter(filtstr)
@@ -370,7 +372,7 @@ class Sniffer(threading.Thread):
         # Capture, allowing timeouts to loop so is_closing
         # can be observed every timeout interval
         while not self.nethandler.is_closing:
-            log.debug('sniffer loop')
+            trace(log, 'sniffer loop')
             pkts = self.pcap_sess.readpkts()
             for pkt in pkts:
                 self.packet_handler(*pkt)
@@ -546,7 +548,7 @@ class DeviceSession(object):
             log.warn('Waiting for DESK ACK %d', totalwait)
             #TODO implement daw-desk retry packets
         trace(log, 'TODESK CMD %d', self.sendcounter)
-        if not self.mac_device is None:
+        if self.mac_device is not None:
             packet = self._prepare_packetr(pkt_data, pkt_data_len, ncmds)
             self.send_packet(packet)
             self.sendlock.clear()
@@ -652,7 +654,6 @@ class DeviceSession(object):
         #--MULTI new session things
         self.parent = parent
         self.session_number = number
-        self.session_name = 'device session {}'.format(self.session_number)
         self.daw_address = None
         self.new_port()
         self.mac_device = MacAddress.from_buffer_copy(device_mac)
@@ -662,13 +663,12 @@ class DeviceSession(object):
             bcast_data.version,
             hexl(self.mac_device)
         )
+        self.session_name = 'device session {} {}'.format(self.session_number, self.bcast_data.device)
         self.client_process = None
         self.parent_conn, self.client_conn = Pipe()
         self.client_is_connected = False
-        #--MULTI slightly hacky, but preparing the client instance arguments in the same format
-        # as they are used when launching as a command line process
-        #self.client_args = ({'connect': self.daw_address}, self.parent.network, self.client_conn)
-        #--MULTI trying passing all the opts through
+        # Build up client arguments. Could be cleaned up in future
+        # but this for the moment retains the Subprocess or standalone pattern
         self.client_args = (self.parent.thru_params[0], self.parent.network, self.client_conn)
         self.is_closing = False
         self.is_supported_device = False
@@ -708,14 +708,16 @@ class DeviceSession(object):
         log.info("%s closing", self.session_name)
         # For threads under direct control this signals to please end
         self.is_closing = True
-        # A bit of encouragement
-        if self.client_is_connected and self.client_process is not None:
-            #if self.client_process.is_alive():
-            self.client_process.terminate()
-            self.client_process.join()
-        # Join threads in case they are hanging aroun
+        # Join threads until they finish
+        log.debug('%s Waiting for thread shutdown', self.session_name)
         self.thread_keepalive.join()
         self.thread_listener.join()
+        # Close the pipe to indicate to the subprocess it should end
+        self.client_conn.close()
+        while self.client_process.is_alive():
+            log.debug('%s waiting for client process shutdown', self.session_name)
+            time.sleep(TIMING_SHUTDOWN_ACTIONS)
+
         # PCAP thread has its own KeyboardInterrupt handle
         log.info("%s closed", self.session_name)
 
@@ -741,6 +743,12 @@ def signal_handler(sig, stackframe):
     signame = signals_dict[sig]
     log.info("Signal Handler %s received.", signame)
     raise ReaQuit(signame)
+
+
+def signal_dumpo(sig, stackframe):
+    """Signal info dumper for debugging"""
+    log = logging.getLogger(__name__)
+    log.debug(str(stackframe))
 
 # START main program
 def main():
@@ -801,11 +809,26 @@ def main():
     if not networks.is_valid_ipstr(opts.connect):
         raise OptionError('Not a valid ipv4 address and port ', 'connect')
 
+    # DEBUG signal dumper
+    #
+    # all_sigs = dict((getattr(signal, n), n) for n in dir(signal)
+    #                     if n.startswith('SIG') and '_' not in n and n not in ['SIGKILL', 'SIGINT', 'SIGSTOP'])
+    #
+    # for sig in all_sigs:
+    #     print sig
+    #     signal.signal(sig, signal_dumpo)
+    #
+    # The problem with using signal.pause is SIGCHLD is raised by the launch
+    # of subprocess
+    # using the ReaQuit instead when we get a signal per the below lists
+    # END DEBUG
+
+
     # Set up Interrupt signal handler so process can close cleanly
     # if an external signal is received
     if sys.platform.startswith('win'):
         # TODO test these in Winders
-        signals = [signal.SIGTERM, signal.SIGHUP, signal.SIGINT, signal.SIGABRT]
+        signals = [signal.SIGTERM, signal.SIGHUP,  signal.SIGABRT]
     else:
         # TODO check other un*x variants
         # OSC (Mojave) responding to these 2
@@ -821,23 +844,22 @@ def main():
     if NETHANDLER is None:
         NETHANDLER = NetworkHandler(opts, networks)
 
-    # Main thread when everything is initiated. Wait for interrupt
-    try:
-        # Behaves differently according to OS
-        if sys.platform.startswith('win'):
-            while True:
-                try:
-                    time.sleep(TIMING_MAIN_LOOP)
-                except ReaQuit:
-                    break
-        else:
-            signal.pause()
-    except ReaQuit:
-        pass
-    except KeyboardInterrupt:
-        pass
+    # Idle until one of the quit conditions is met
 
+    try:
+        while True:
+            time.sleep(TIMING_MAIN_LOOP)
+    except ReaQuit:
+        print '**ReaQuit'
+    except KeyboardInterrupt:
+        print '**KeyboardInterrupt'
+    except Exception:
+        print '**UnhandledException'
+        raise
+
+    print '**Closing'
     NETHANDLER.close()
+
 
 if __name__ == '__main__':
     main()
