@@ -263,7 +263,7 @@ class KeepAlive(threading.Thread):
         """keep alive loop"""
         log = logging.getLogger(__name__)
         while not self.session.is_closing:
-            if self.session.parent.is_capturing and not self.session.mac_device is None:
+            if self.session.parent.is_capturing and self.session.mac_device is not None:
                 delta = tick() - self.session.pcap_last_sent
                 if delta >= TIMING_KEEP_ALIVE:
                     log.trace('%s KeepAlive TO DEVICE', self.session.session_name)
@@ -296,7 +296,7 @@ class ManageListener(threading.Thread):
         # Loop to manage connect/disconnect events
         while not self.session.is_closing:
             try:
-                while self.session.client_is_connected:
+                while self.session.client_is_connected and not self.session.is_closing:
                     buffsz = 0
                     if self.mp_conn.poll(TIMING_LISTENER_POLL):
                         incrsz = self.mp_conn.recv_bytes_into(
