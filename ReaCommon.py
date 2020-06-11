@@ -1931,10 +1931,13 @@ class _ReaOscsession(object):
             self.thread_osc_client.daemon = True
             self.thread_osc_client.start()
 
-            #self.thread_daemon_client.join()
+            # Have to join a thread now or the whole subprocess will end and shut down all threads
+            self.thread_daemon_client.join()
+
         except Exception:
             self.log.error('Error caught by Outer error trap for OSC client session threads:', exc_info=True)
             raise
+
 
     def __str__(self):
         """pretty print session state if requested"""

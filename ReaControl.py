@@ -663,7 +663,7 @@ class DeviceSession(object):
             bcast_data.version,
             hexl(self.mac_device)
         )
-        self.session_name = 'device session {} {}'.format(self.session_number, self.bcast_data.device)
+        self.session_name = 'DevSess {} {}'.format(self.session_number, self.bcast_data.device)
         self.client_process = None
         self.parent_conn, self.client_conn = Pipe()
         self.client_is_connected = False
