@@ -5,7 +5,7 @@ Other, similar clients can be written to communicate with other
 protocols such as MIDI HUI, Mackie etc.
 """
 
-from ReaCommon import (main, ModeManager, ReaVumeter, ReaButtonLed,
+from ReaCommon import (main, trace, ModeManager, ReaVumeter, ReaButtonLed,
                        _ReaDesk, _ReaTrack, _ReaScribStrip, _ReaVpot, _ReaFader, _ReaAutomode, _ReaOscsession,
                        )
 import procontrolmap
@@ -55,7 +55,7 @@ class ProCTrack(_ReaTrack):
         # super gives us the common layout, now we add Pro Control specifics
         # Only channel strip setup specific to Control24 goes here
         if self.track_number < self.desk.real_channels:
-            self.log.debug('Adding ProC specifics to track instance')
+            trace(self.log, 'Adding ProC specifics to track instance')
             self.reafader = ProCfader(self)
             self.reavpot = ProCvpot(self)
             self.reaautomode = ProCautomode(self.desk, self)

@@ -460,9 +460,6 @@ class NetworkHandler(object):
         self.mac_computer = MacAddress.from_buffer_copy(bytearray.fromhex(self.mac_computer_str.replace(':', '')))
         self.thread_pcap_loop = Sniffer(self)
         self.thread_pcap_loop.start()
-        #self.thread_pcap_loop.join()
-        #self.is_closing = True
-        #self.close()
 
     def __str__(self):
         """pretty print handler state if requested"""
@@ -490,12 +487,14 @@ class NetworkHandler(object):
         trace(log, "NetworkHandler del")
         self.close()
 
+
 # Main sesssion class
 class DeviceSession(object):
     """Class to contain all session details with a control surface device.
     Now handler multiple sessions!"""
 
     c24cmds = COMMANDS
+
     # callbacks / event handlers (threaded)
     def packet_handler(self, packet):
         """Device Session Packet Handler. If packet was for
@@ -663,7 +662,7 @@ class DeviceSession(object):
             bcast_data.version,
             hexl(self.mac_device)
         )
-        self.session_name = 'DevSess {} {}'.format(self.session_number, self.bcast_data.device)
+        self.session_name = 'DevSess{} {}'.format(self.session_number, self.bcast_data.device)
         self.client_process = None
         self.parent_conn, self.client_conn = Pipe()
         self.client_is_connected = False

@@ -43,7 +43,7 @@ DEFAULTS = {
     'oscport': 9124,
     'oscDaw': 9125,
     'auth': 'be_in-control',
-    'loglevel': 'TRACE',    #'INFO',
+    'loglevel': 'INFO',   # 'TRACE' here will activate deep debugging
     'interface': 'en0',
     'logdir': './logs',
     'logformat': '%(asctime)s\t%(name)s\t%(levelname)s\t' +
