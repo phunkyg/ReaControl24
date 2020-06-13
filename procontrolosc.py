@@ -7,7 +7,7 @@ protocols such as MIDI HUI, Mackie etc.
 
 from ReaCommon import (main, trace, ModeManager, ReaVumeter, ReaButtonLed,
                        _ReaDesk, _ReaTrack, _ReaScribStrip, _ReaVpot, _ReaFader, _ReaAutomode, _ReaOscsession,
-                       )
+                       ReaClock)
 import procontrolmap
 
 '''
@@ -65,7 +65,7 @@ class ProCTrack(_ReaTrack):
             self.track_number >= self.desk.real_channels,
             self.track_number <= self.desk.real_channels + self.desk.busvus
         ]):
-            self.reavumeter = ReaVumeter(self)
+            self.reavumeter = ProCvumeter(self)
 
         # Place a scribble strip on main channel strips
         if self.track_number <= self.desk.real_channels:
@@ -103,6 +103,7 @@ class ProCdesk(_ReaDesk):
 
         self.mapping_tree = procontrolmap.MAPPING_TREE_PROC
         self.reabuttonled = ReaButtonLed(self, None)
+        self.clock = ProCclock(self)
 
         self.modemgr = ModeManager(ProCdesk.deskmodes)
         # Set up specifics for this device
@@ -130,6 +131,22 @@ class ProCscribstrip(_ReaScribStrip):
         # Pro Control scribs have this byte set to 0 not 1
         self.cmdbytes[2] = 0x00
 
+class ProCvumeter(ReaVumeter):
+    """class to hold vumeter specifics for ProControl"""
+
+    def __init__(self, track):
+        super(ProCvumeter, self).__init__(track)
+        # Pro Control scribs have this byte set to 0 not 1
+        self.cmdbytes[2] = 0x00
+
+class ProCclock(ReaClock):
+    """class to hold vumeter specifics for ProControl"""
+
+    def __init__(self, desk):
+        super(ProCclock, self).__init__(desk)
+        # Pro Control scribs have this byte set to 0 not 1
+        self.cmdbytes[2] = 0x00
+        self.ledbytes[2] = 0x00
 
 # TODO, unless specifics are needed the next few classes can be collapsed by refactoring the
 # OSC schema in the OSC mapping files to be consistent
@@ -140,7 +157,8 @@ class ProCvpot(_ReaVpot):
 
     def __init__(self, track):
         super(ProCvpot, self).__init__(track, ProCvpot.defaultaddress)
-
+        # Pro Control scribs have this byte set to 0 not 1
+        self.cmdbytes[2] = 0x00
 
 class ProCfader(_ReaFader):
     """Class for the Pro Control Faders"""
@@ -157,6 +175,8 @@ class ProCautomode(_ReaAutomode):
 
     def __init__(self, desk, track):
         super(ProCautomode, self).__init__(desk, track, ProCautomode.defaultaddress)
+        # Pro Control scribs have this byte set to 0 not 1
+        self.cmdbytes[2] = 0x00
 
 
 class ProCoscsession(_ReaOscsession):

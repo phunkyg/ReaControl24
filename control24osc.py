@@ -6,7 +6,7 @@ protocols such as MIDI HUI, Mackie etc.
 """
 
 from ReaCommon import (main, trace, ModeManager, ReaVumeter, ReaButtonLed,
-                       _ReaDesk, _ReaTrack, _ReaScribStrip, _ReaVpot, _ReaFader, _ReaAutomode, _ReaOscsession,
+                       ReaClock, _ReaDesk, _ReaTrack, _ReaScribStrip, _ReaVpot, _ReaFader, _ReaAutomode, _ReaOscsession,
                        )
 import control24map
 
@@ -113,6 +113,7 @@ class C24desk(_ReaDesk):
 
         self.mapping_tree = control24map.MAPPING_TREE
         self.reabuttonled = ReaButtonLed(self, None)
+        self.clock = ReaClock(self)
 
         self.modemgr = ModeManager(C24desk.deskmodes)
         # Set up specifics for this device

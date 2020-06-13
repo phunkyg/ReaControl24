@@ -875,7 +875,7 @@ class _ReaDesk(ReaBase):
         # Set up the child track objects
 
         """ Currently standardised Properties"""
-        self.clock = ReaClock(self)
+
         self.reanav = ReaNav(self)
         self.reamodifiers = ReaModifiers(self)
 
@@ -895,6 +895,8 @@ class _ReaDesk(ReaBase):
         self.tracks = []
         # Button LED class depends on the mapping tree so must be done by inheritor
         self.reabuttonled = None
+        # clock
+        self.clock = None
 
     def set_mode(self, mode):
         """set the global desk mode"""
