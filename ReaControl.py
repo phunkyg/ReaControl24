@@ -351,7 +351,7 @@ class Sniffer(threading.Thread):
         self.nethandler.pcap_sess = self.nethandler.fpcapt.pcap(
             name=network,
             promisc=False,
-            immediate=False,
+            immediate=True,
             timeout_ms=TIMING_SNIFFER_TIMEOUT
             )
         filtstr = PCAP_FILTER % self.nethandler.mac_computer_str
@@ -372,7 +372,6 @@ class Sniffer(threading.Thread):
         # Capture, allowing timeouts to loop so is_closing
         # can be observed every timeout interval
         while not self.nethandler.is_closing:
-            trace(log, 'sniffer loop')
             pkts = self.pcap_sess.readpkts()
             for pkt in pkts:
                 self.packet_handler(*pkt)
