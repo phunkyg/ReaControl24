@@ -367,16 +367,19 @@ class Sniffer(threading.Thread):
         """pcap loop, runs until interrupted. blocks the main
         program for graceful exit"""
         log = logging.getLogger(__name__)
-        log.debug('Capture Starting')
+        log.info('Capture Starting')
         self.nethandler.is_capturing = True
-        # Capture, allowing timeouts to loop so is_closing
-        # can be observed every timeout interval
-        while not self.nethandler.is_closing:
-            pkts = self.pcap_sess.readpkts()
-            for pkt in pkts:
-                self.packet_handler(*pkt)
+        try:
+            for pkt in self.pcap_sess:
+                if pkt is not None:
+                    self.packet_handler(*pkt)
+        except KeyboardInterrupt:
+            log.debug('Sniffer: KeyboardInterrupt')
+        except ReaQuit:
+            log.debug('Sniffer: ReaQuit')
         self.nethandler.is_capturing = False
-        log.debug('Capture Finished')
+        self.nethandler.close()
+        log.info('Capture Finished')
 
 
 #--MULTI New Listener class
