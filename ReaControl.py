@@ -348,20 +348,26 @@ class Sniffer(threading.Thread):
         self.nethandler = nethandler
         network = self.nethandler.network.get('pcapname')
         # Set up the pcas session
+        # comment from the lib:
+            # timeout_ms -- requests for the next packet will return None if the timeout
+            #               (in milliseconds) is reached and no packets were received
+            #               (Default: no timeout)
         self.nethandler.pcap_sess = self.nethandler.fpcapt.pcap(
+            #timeout_ms=TIMING_SNIFFER_TIMEOUT
             name=network,
+            snaplen=65535,
             promisc=False,
             immediate=True,
-            timeout_ms=TIMING_SNIFFER_TIMEOUT
             )
         filtstr = PCAP_FILTER % self.nethandler.mac_computer_str
         self.nethandler.pcap_sess.setfilter(filtstr)
         # experiment!
-        #self.nethandler.pcap_sess.setnonblock()
+        self.nethandler.pcap_sess.setnonblock()
         # Store as a few attributes
         self.nethandler.is_capturing = False
         self.pcap_sess = self.nethandler.pcap_sess
         self.packet_handler = self.nethandler.packet_handler
+
 
     def run(self):
         """pcap loop, runs until interrupted. blocks the main
@@ -370,9 +376,12 @@ class Sniffer(threading.Thread):
         log.info('Capture Starting')
         self.nethandler.is_capturing = True
         try:
-            for pkt in self.pcap_sess:
-                if pkt is not None:
-                    self.packet_handler(*pkt)
+            # Known to work but unbreakable it seems
+            # for pkt in self.pcap_sess:
+            #     if pkt is not None:
+            #         self.packet_handler(*pkt)
+            while not self.nethandler.is_closing:
+                self.packet_handler(*self.pcap_sess.next())
         except KeyboardInterrupt:
             log.debug('Sniffer: KeyboardInterrupt')
         except ReaQuit:
@@ -476,11 +485,16 @@ class NetworkHandler(object):
         for mac, sess in self.sessions.iteritems():
             log.info("Closing DeviceSession for %s", mac)
             sess.close()
+
+
         # For threads under direct control this signals to please end
         self.is_closing = True
+        # Experimental - stop the sniffer
+        # Doesn't work: self.pcap_sess.close()
+
         # Join threads to ensure they close (none)
-        self.thread_pcap_loop.join()
-        # PCAP thread has its own KeyboardInterrupt handler
+        #self.thread_pcap_loop.join()
+
         log.info("NetworkHandler closed")
 
     def __del__(self):
@@ -714,10 +728,12 @@ class DeviceSession(object):
         self.thread_keepalive.join()
         self.thread_listener.join()
         # Close the pipe to indicate to the subprocess it should end
-        self.client_conn.close()
-        while self.client_process.is_alive():
-            log.debug('%s waiting for client process shutdown', self.session_name)
-            time.sleep(TIMING_SHUTDOWN_ACTIONS)
+        # self.client_conn.close()
+        # self.parent_conn.close()
+        # self.client_process.terminate()
+        # while self.client_process.is_alive():
+        #     log.debug('%s waiting for client process shutdown', self.session_name)
+        #     time.sleep(TIMING_SHUTDOWN_ACTIONS)
 
         # PCAP thread has its own KeyboardInterrupt handle
         log.info("%s closed", self.session_name)
