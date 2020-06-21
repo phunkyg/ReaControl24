@@ -20,7 +20,7 @@ from optparse import OptionError
 import pcap
 
 from ReaCommon import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
-                       opts_common, tick, fix_ownership,
+                       opts_common, tick, fix_ownership, ReaQuit,
                        start_logging, trace)
 
 #--MULTI can we import the client scripts?
@@ -745,10 +745,7 @@ class DeviceSession(object):
         self.close()
 
 
-class ReaQuit(Exception):
-    """Custom exception to use when there is an internal problem"""
-    pass
-# END classes
+
 
 
 # functions for main
@@ -849,7 +846,8 @@ def main():
     else:
         # TODO check other un*x variants
         # OSC (Mojave) responding to these 2
-        signals = [signal.SIGTERM, signal.SIGHUP]
+        #signals = [signal.SIGTERM, signal.SIGHUP]
+        signals = [signal.SIGHUP]
 
     for sig in signals:
         signal.signal(sig, signal_handler)

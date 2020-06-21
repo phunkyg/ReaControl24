@@ -183,6 +183,11 @@ def hexl(inp):
     return ' '.join([shex[i:i + 2] for i in range(0, len(shex), 2)])
 
 
+class ReaQuit(Exception):
+    """Custom exception to use when there is an internal problem"""
+    pass
+# END classes
+
 class ReaException(Exception):
     """Custom exception to use when there is an internal problem"""
     pass
@@ -1817,34 +1822,41 @@ class _ReaOscsession(object):
         testmsg = OSC.OSCMessage('/print')
         testmsg.append('hello DAW')
 
-        while not self.is_closing:
-            self.osc_client = OSC.OSCClient()
-            while self.osc_listener is None or self.osc_listener_last is None or not self.osc_listener.running:
-                self.log.debug(
-                    'Waiting for the OSC listener to get a client %s', self.osc_listener_last)
-                time.sleep(TIMING_WAIT_OSC_LISTENER)
-            try:
-                self.log.debug('Starting OSC Client connecting to %s',
-                               self.connect)
-                self.osc_client.connect(self.connect)
-                self.osc_client_is_connected = True
-            except Exception:
-                self.log.error("OSC Client connection error",
-                               exc_info=True)
-                self.osc_client_is_connected = False
-                time.sleep(TIMING_OSC_CLIENT_RESTART)
-            while self.osc_client_is_connected and not self.is_closing:
-                self.log.debug("Sending Test message via OSC Client")
+        try:
+            while not self.is_closing:
+                self.osc_client = OSC.OSCClient()
+                while self.osc_listener is None or self.osc_listener_last is None or not self.osc_listener.running:
+                    self.log.debug(
+                        'Waiting for the OSC listener to get a client %s', self.osc_listener_last)
+                    time.sleep(TIMING_WAIT_OSC_LISTENER)
                 try:
-                    self.osc_client.send(testmsg)
-                except OSC.OSCClientError:
-                    self.log.error("Sending Test message got an error. DAW is no longer responding.")
-                    self._disconnect_osc_client()
+                    self.log.debug('Starting OSC Client connecting to %s',
+                                   self.connect)
+                    self.osc_client.connect(self.connect)
+                    self.osc_client_is_connected = True
                 except Exception:
-                    self.log.error("OSC Client Unhandled exception", exc_info=True)
-                    raise
-                time.sleep(TIMING_OSC_CLIENT_LOOP)
-            time.sleep(TIMING_OSC_CLIENT_RESTART)
+                    self.log.error("OSC Client connection error",
+                                   exc_info=True)
+                    self.osc_client_is_connected = False
+                    time.sleep(TIMING_OSC_CLIENT_RESTART)
+                while self.osc_client_is_connected and not self.is_closing:
+                    self.log.debug("Sending Test message via OSC Client")
+                    try:
+                        self.osc_client.send(testmsg)
+                    except OSC.OSCClientError:
+                        self.log.error("Sending Test message got an error. DAW is no longer responding.")
+                        self._disconnect_osc_client()
+                    except Exception:
+                        self.log.error("OSC Client Unhandled exception", exc_info=True)
+                        raise
+                    time.sleep(TIMING_OSC_CLIENT_LOOP)
+                time.sleep(TIMING_OSC_CLIENT_RESTART)
+        except ReaQuit:
+            self.log.debug('OSC Client received ReaQuit')
+        except Exception:
+            self.log.error("OSC Client Unhandled exception", exc_info=True)
+            raise
+
         self.log.debug('OSC client thread finished')
 
     # common methods for disconnects (starting some tidying and DRY)
