@@ -55,7 +55,7 @@ Some older python installations in OSX do cause issues as they pre-date upgrades
 
 ### Installing - Windows 10
 
-The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process [in the doc subfolder](/doc/Windows_Setup.mp4)
+The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process [in the docs repository subfolder](https://github.com/phunkyg/ReaControl-docs)
 
 * Download and install latest 64 bit Python 2.7.x
     * General Download Page: https://www.python.org/downloads
