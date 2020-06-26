@@ -104,6 +104,10 @@ pip install -r requirements.txt -U
 When complete, to run the daemon, rather than using 'sudo', use an 'Administrator command prompt' and omit the sudo from the command line.
 When supplying a network name, either the name (as it appears in the Windows network control panel settings) or the GUID will work. If you are struggling to find the right value, use the -n command line switch with a junk/bad value and the program will fail, but will list all your network adapter GUID and Names for you.
 
+```
+sudo python control24d.py -n DUMMY
+```
+
 
 ## Getting Started
 
@@ -177,7 +181,7 @@ For Windows:
 ```
 Npcap
 Npcap SDK
-Microsoft C++ compiler for Python
+junkMicrosoft C++ compiler for Python
 ```
 
 ### Compatibility
@@ -215,7 +219,7 @@ In Windows, close the Command Prompt window where you launched the program.
 
 By way of an apology, may this bring levity to your day
 "Son where we're going, we don't need no tests"
-
+Also relevant meme: https://i.redd.it/557dqxdyn7651.jpg
 Seriously though, without a dedicated piece of test hardware, this isn't easy. Some effort may be made to emulate traffic in the future!
 
 ### Coding standards
