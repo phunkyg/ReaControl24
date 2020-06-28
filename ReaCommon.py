@@ -48,7 +48,8 @@ DEFAULTS = {
     'logdir': './logs',
     'logformat': '%(asctime)s\t%(name)s\t%(levelname)s\t' +
                  '%(threadName)s\t%(funcName)s\t%(lineno)d\t%(message)s',
-    'timing_scribble_restore': 1
+    'timing_scribble_restore': 1,
+    'ignore_networks': ['Npcap Loopback Adapter']
 }
 
 COMMANDS = {
@@ -210,7 +211,9 @@ class NetworkHelper(object):
     def get_default(self):
         """return the name and first ip of whichever adapter
         is marked as default"""
+        ignore = DEFAULTS.get('ignore_networks')
         default = [key for key, data in self.networks.iteritems() if data.has_key('default')]
+        print default
         if default:
             def_net = default[0]
             def_ip = self.networks[def_net].get('ip')[0].get('addr')
