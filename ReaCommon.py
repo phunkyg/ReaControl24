@@ -49,7 +49,7 @@ DEFAULTS = {
     'logformat': '%(asctime)s\t%(name)s\t%(levelname)s\t' +
                  '%(threadName)s\t%(funcName)s\t%(lineno)d\t%(message)s',
     'timing_scribble_restore': 1,
-    'ignore_networks': ['Npcap Loopback Adapter', 'Bluetooth Network Connection']
+    'ignore_networks': ['Npcap Loopback Adapter', 'Bluetooth Network Connection', 'bridge0']
 }
 
 COMMANDS = {
@@ -279,16 +279,17 @@ class NetworkHelper(object):
                     val['name'] = net_name
                     # ignore certain names
                     if net_name in ignorelist:
-                        del networks[key]
+                        val['ignore'] = True
             except WindowsError:  # pylint: disable=E0602
                 pass
+
         wr.CloseKey(reg_key)
-        print networks
         return networks
 
     @staticmethod
     def list_networks():
         """Gather networks info via netifaces library"""
+        ignorelist = DEFAULTS.get('ignore_networks')
         default_not_found = True
         names = [a.encode('ascii', 'ignore') for a in netifaces.interfaces()]
         results = {}
@@ -297,17 +298,20 @@ class NetworkHelper(object):
                 'pcapname': interface,
                 'mac': NetworkHelper.get_mac_address(interface)
             }
+            if interface in ignorelist:
+                inner['ignore'] = True
             # ip
             ips = NetworkHelper.get_ip_address(interface)
             if ips:
                 inner['ip'] = ips
-                if default_not_found and any([ip.has_key('addr') and not ip.has_key('peer') for ip in ips]):
+                if default_not_found and (not inner.has_key('ignore')) and any([ip.has_key('addr') and not ip.has_key('peer') for ip in ips]):
                     default_not_found = False
                     inner['default'] = True
             results[interface] = inner
         if sys.platform.startswith('win'):
-            return NetworkHelper.list_networks_win(results)
-        return results
+            win_networks = NetworkHelper.list_networks_win(results)
+            return [net for net in win_networks if not net.has_key('ignore')]
+        return [net for net in results if not net.has_key('ignore')]
 
     @staticmethod
     def ipstr_to_tuple(ipstr):
