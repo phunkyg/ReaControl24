@@ -842,7 +842,7 @@ def main():
     # if an external signal is received
     if sys.platform.startswith('win'):
         # TODO test these in Winders
-        signals = [signal.CTRL_BREAK_EVENT]
+        signals = [signal.CTRL_C_EVENT, signal.CTRL_BREAK_EVENT]
     else:
         # This 'just works' somehow on osx and raspbian
         signals = [signal.SIGHUP]
