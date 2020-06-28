@@ -262,6 +262,7 @@ class NetworkHelper(object):
     def list_networks_win(networks):
         """Windows shim for list_networks. Also go to the registry to
         get a friendly name"""
+        ignorelist = DEFAULTS.get('ignore_networks')
         reg = wr.ConnectRegistry(None, wr.HKEY_LOCAL_MACHINE)
         reg_key = wr.OpenKey(
             reg,
@@ -276,6 +277,9 @@ class NetworkHelper(object):
                 net_name = wr.QueryValueEx(net_key, 'Name')[0]
                 if net_name:
                     val['name'] = net_name
+                    # ignore certain names
+                    if net_name in ignorelist:
+                        del networks[key]
             except WindowsError:  # pylint: disable=E0602
                 pass
         wr.CloseKey(reg_key)
