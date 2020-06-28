@@ -310,8 +310,12 @@ class NetworkHelper(object):
             results[interface] = inner
         if sys.platform.startswith('win'):
             win_networks = NetworkHelper.list_networks_win(results)
-            return [net for net in win_networks if not net.has_key('ignore')]
-        return [net for net in results if not net.has_key('ignore')]
+            return NetworkHelper.omit_ignore(win_networks)
+        return NetworkHelper.omit_ignore(results)
+
+    @staticmethod
+    def omit_ignore(net_dict):
+        return {k: v for k, v in net_dict.iteritems() if not v.has_key('ignore')}
 
     @staticmethod
     def ipstr_to_tuple(ipstr):
