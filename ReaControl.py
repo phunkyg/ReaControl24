@@ -842,11 +842,9 @@ def main():
     # if an external signal is received
     if sys.platform.startswith('win'):
         # TODO test these in Winders
-        signals = [signal.SIGTERM, signal.SIGHUP,  signal.SIGABRT]
+        signals = [signal.CTRL_BREAK_EVENT]
     else:
-        # TODO check other un*x variants
-        # OSC (Mojave) responding to these 2
-        #signals = [signal.SIGTERM, signal.SIGHUP]
+        # This 'just works' somehow on osx and raspbian
         signals = [signal.SIGHUP]
 
     for sig in signals:
