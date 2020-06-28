@@ -49,7 +49,7 @@ DEFAULTS = {
     'logformat': '%(asctime)s\t%(name)s\t%(levelname)s\t' +
                  '%(threadName)s\t%(funcName)s\t%(lineno)d\t%(message)s',
     'timing_scribble_restore': 1,
-    'ignore_networks': ['Npcap Loopback Adapter']
+    'ignore_networks': ['Npcap Loopback Adapter', 'Bluetooth Network Connection']
 }
 
 COMMANDS = {
