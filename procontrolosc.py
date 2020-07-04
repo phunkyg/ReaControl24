@@ -144,7 +144,7 @@ class ProCclock(ReaClock):
 
     def __init__(self, desk):
         super(ProCclock, self).__init__(desk)
-        # Pro Control scribs have this byte set to 0 not 1
+        # Pro Control clock has these bytes set to 0 not 1
         self.cmdbytes[2] = 0x00
         self.ledbytes[2] = 0x00
 

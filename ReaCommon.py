@@ -683,7 +683,7 @@ class ReaClock(ReaBase):
 
     def c_d(self, addrlist, stuff):
         """Update from DAW text"""
-        mode = addrlist[2]
+        mode = addrlist[-1]
         self.text[mode] = stuff[0]
         # for speed we simply ignore any osc message that isn't
         # for the current mode.
@@ -1149,7 +1149,7 @@ class ReaJpot(ReaBase):
     def d_c(self, parsedcmd):
         """desk to computer, switch by button or jog input"""
         addrs = parsedcmd.get('addresses')
-        if addrs[1] == "button":
+        if "button" in addrs:
             self._update_from_button(parsedcmd, addrs)
         else:
             self._update_from_move(parsedcmd)
