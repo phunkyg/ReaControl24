@@ -1,41 +1,28 @@
-# LOOKING FOR DEV_OtherDevices?
+# Welcome to DEV_OtherDevices!
+
+If you are here then you are probably have a device other than a Control24.
+This is an experimental new version with many new features, that has been overhauled to provide support for:
+
+* ProControl
+    * So far just the main unit
+* Other devices - contact PhunkyG for more info on getting your device supported!
 
 
-You are in the DEV_OtherDevices_Refactor branch
-You probably wanted the DEV_OtherDevices branch
+# ReaControl
 
-This is phunkyg's branch for tidying things up around here!
+Legacy Digidesign control surface protocol middleware for Reaper.
 
+This middleware allows you to use the Legacy Digidesign control surface hardware with Reaper, including Control24 and ProControl. 
+(From here on in, they will be called a 'Desk' for speed)
+It will allow you to establish communication between the desk and Reaper.OSC or any other similar DAW with OSC capability.
+It will bring the Desk online and provide 2 way communiation with it, so you can control the DAW by using the device buttons, faders and pots, and the DAW can update the desk fader positions, LEDs and displays.
 
-
-# ReaControl24
-
-Control24 digital control surface protocol middleware for Reaper.
-
-This middleware allows you to use the Digidesign Control24 hardware with Reaper. 
-It will allow you to establish communication between the Control24 hardware and Reaper.OSC or any other similar DAW with OSC capability.
-It will bring the Control24 online and provide 2 way communiation with it, so you can control the DAW by using the Control24 buttons, faders and pots, and the DAW can update the Control24 fader positions, LEDs and displays.
-
-
-# How it Works
-
-The Ethernet packets are captured using a Packet Capture utility, sometimes know as a 'network sniffer'.
-Only packets for the Control24 are captured, all normal network traffice is ignored.
-ReaControl's 'daemon' process then deals with this network traffic, and passes it to its 'client' process.
-The 'client' process translates the Control24's binary language to OSC and vice-versa, passing binary messages back to the 'daemon' process which then sends them back as network packets to the Control24.
-Finally, the OSC messages are sent as normal TCP/IP packets to the Reaper.OSC extension, which drives the DAW, according to the mappings found in the control file, OR in the Actions list. Return OSC messages are sent back to the 'client' process for the return trip, again as normal TCP/IP packets.
-
-Each component can be on a separate computer, or all on the same one.
-
-Some basic stateful mode handling is provided by the 'client' process to receive text from the DAW and display it on the scribble strips, handle controls which can toggle, and deal with issues like fader command echos.
-
-You will need super user (or elevated Administrator in Windows) privileges to use this software (specifically the daemon process'), as it uses packet capture libraries (libpcap / npcap) to establish network connectivity with the Control24 ethernet interface. All other TCP and UDP traffic is ignored/filtered out, so you should not have any privacy concerns if the source has not been tampered with.
 
 ### Installing - OSX, macos, Linux
 
-Ensure the current or default python environment has a 2.x interpreter in the current path (enter 'python' at the command line to check), and install the pre-requisites into user environment using pip or similar
+Ensure the current or default python environment has a 2.7.x interpreter in the current path (enter 'python' at the command line to check), and install the pre-requisites into user environment using pip or similar
 
-Example pip install
+Example pip install command line:
 
 ```
 pip install -r requirements.txt --user
@@ -43,11 +30,9 @@ pip install -r requirements.txt --user
 
 By default all log outputs will be created into the *logs* subdirectory below wherever you unpack/install the files, so choose somewhere that this can happen without issues.
 
-Some older python installations in OSX do cause issues as they pre-date upgrades in the python security/encryption, so please ensure you are at the highest OS level you can be, and if that is not enough, you can find guides online on how to make the changes you need to python, or to install a second python environment just for ReaControl.
-
 ### Installing - Windows 10
 
-The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process [in the doc subfolder](/doc/Windows_Setup.mp4)
+The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process [in the docs repository](https://github.com/phunkyg/ReaControl-docs)
 
 * Download and install latest 64 bit Python 2.7.x
     * General Download Page: https://www.python.org/downloads
@@ -68,7 +53,7 @@ The pre-requisite installation process for Windows is quite a bit more involved,
 
 (Following is a re-statement of the procedure for 'installation from sources' of pypcap found at - https://github.com/pynetwork/pypcap/blob/master/docs/index.rst)
 
-Choose a folder to work in: Creating an 'install' subfolder under where you unpacked this repo (ReaControl24) is a reasonable choice.
+Choose a folder to work in: Creating an 'install' subfolder under where you unpacked this repo (ReaControl) is a reasonable choice.
 
 * Unzip the pypcap download into the chosen install folder. 
     * Check if the zip made 2 folders called 'pypcap-1.2.0' or similar, one within the other. If so, move the inner one down a level so it sits under 'install'
@@ -101,10 +86,10 @@ When supplying a network name, either the name (as it appears in the Windows net
 
 Copy the files to your system in a reasonable spot (your REAPER Scripts directory for example) where you will be able to run the python programs and log files can be created.
 
-For a quick start, if your DAW and Control24 are on the same LAN, and you intend to run this middleware on your DAW computer:
+For a quick start, if your DAW and Desk are on the same LAN, and you intend to run this middleware on your DAW computer:
 
 * Set up Reaper.OSC for your environment. See the additional guide below for details.
-* For windows start one Administrator command prompt, for other OS a normal terminal will do and use 'sudo'. 
+* For windows start an Administrator command prompt, for other OS a normal terminal will do and use 'sudo' to prefix the commands. 
 * Run the *daemon process*
 ```
 sudo python ReaControl.py
@@ -118,10 +103,15 @@ sudo python ReaControl.py
 ```
 sudo python ReaControl.py -n NO_NETWORK
 ```
+    * You can then use the network name or GUID to identify where your desk is connected, e.g:
+```
+sudo python ReaControl.py -n en1
+```
+    
 
 ### How to set up Reaper.OSC
 
-Setting up Reaper.OSC is detailed in the Reaper documentation, but here is a quick guide to the required steps for ReaControl24:
+Setting up Reaper.OSC is detailed in the Reaper documentation, but here is a quick guide to the required steps for ReaControl:
 
 * Start Reaper
 * Go to the *Preferences* dialog
@@ -130,11 +120,11 @@ Setting up Reaper.OSC is detailed in the Reaper documentation, but here is a qui
 * Set the *Control surface mode* drop-down box to *OSC (Open Sound Control)*
 * Click the *Pattern Config* drop-down box and choose *(open config directory)*
 * Finder or Windows Explorer will now open at the OSC config files directory for your system
-* Copy or move the *Control24.ReaperOSC* file provided with ReaControl24 into this directory
+* Copy or move the *<desk_name>.ReaperOSC* file that matches your desk (or all of them!) provided with ReaControl into this directory
 * Return to the Reaper OSC dialog (which should still be open) and again Click the *Pattern Config* drop-down box. Choose *(refresh list)*
-* Click the *Pattern Config* drop-down box a final time, this time you should see and choose *Control24*
+* Click the *Pattern Config* drop-down box a final time, this time you should see and choose the entry that matches your desk e.g. *Control24*
 * Complete the rest of the configuration in the dialog. The settings below are an example and may vary for your environment:
-    * *Device Name* = any suitable name e.g. "ReaControl24"
+    * *Device Name* = any suitable name e.g. "ReaControl"
     * *Mode* = Configure device IP + local port
     * *Device Port* = 9124
     * *Device IP* = The IP address of the computer running ReaControl client process e.g: 192.168.1.10
@@ -147,7 +137,7 @@ Setting up Reaper.OSC is detailed in the Reaper documentation, but here is a qui
 
 ### Advanced options
 
-Use the --help command line switch for each process and the possibilities will be shown. Addresses and ports can be set for TCP/IP links, and the network interface can be set to state where the Control24 can be found.
+Use the --help command line switch for each process and the possibilities will be shown. Addresses and ports can be set for TCP/IP links, and the network interface can be set to state where the Desk can be found.
 
 ### Prerequisites
 
@@ -168,14 +158,19 @@ Npcap SDK
 Microsoft C++ compiler for Python
 ```
 
+### Known Issues
+
+Some older python installations in OSX do cause issues as they pre-date upgrades in the python security/encryption, so please ensure you are at the highest OS level you can be, and if that is not enough, you can find guides online on how to make the changes you need to python, or to install a second python environment just for ReaControl.
+
+
 ### Compatibility
 
-Although ReaControl24 is written in python, it depends on certain libraries like pypcap, that can vary from platform to platform. Testing of various platforms is ongoing, status at this time is:
+Although ReaControl is written in python, it depends on certain libraries like pypcap, that can vary from platform to platform. Testing of various platforms is ongoing, status at this time is:
 
 
-|Platform|control24d|control24osc|
+|Platform|Reacontrol|OSC clients|
 |---|---|---|
-|macos 10.13.x|Full|Full|
+|macos 10.14.x|Full|Full|
 |Windows 10|Full|Full|
 |macos < 10.13|May require python upgrade/2nd environment|ditto|
 |Rasbpian June 2018|Full|Full|
@@ -193,7 +188,7 @@ Log files will be created in a 'logs' subdirectory relative to where the process
 All this can be changed by use of command line parameters. Use the --help switch to get the current definition and defaults.
 
 ```
-python control24d.py --help
+python ReaControl.py --help
 ```
 
 To exit either process, press CTRL+C on the keyboard in the shell window, or send the process a SIGINT.
@@ -224,10 +219,32 @@ $ ln -s /Users/you/Documents/ReaControl24/ProControl.ReaperOSC /Users/you/Librar
 50% NOOB, 49% IDIOT, 1% Beer driven lunacy. Any contributors should feel free to laugh and point, as long as the criticism can be usefully applied.
 Some improvements have been made since the early days, we strive to be more 'pythonic' and keep things clean!
 
+Latest code uses a class pattern for OSC client code. The 'ReaCommon.py' file contains the base classes, then the device specific .py file adds any specifics.
+This helps where the implementation is pretty much the same for some controls and small diffferences are needed.
+
 ## Deployment
 
-The daemon process MUST be on a host with an interface in the same LAN segment as the Control24. It will present an IP socket that uses python multiprocessing library. The control24osc process and DAW may reside anywhere that you can route the traffic to.
+At a minimum you can connect the desk to a spare LAN port on your DAW PC. You can connect both Desk and DAW through a switch or bridge. Anything like a gateway or router is unlikely to allow the traffic, in such cases a Pi or other small linux SBC is a good idea then the OSC traffic can be routed to the DAW PC.
+
+The ReaControl.py daemon process MUST be on a host with an interface in the same LAN segment as the Desk. It will self-launch the right client process and manage the subprocesses. The daemon process and DAW may reside anywhere that you can route the traffic between (VPN etc), but it might be VERY difficult to route traffic between the Desk and ReaControl.
 If you use a dedicated SBC like a Raspberry pi, you may wish to add the startup of the scripts to your system startup commands, so the communication is available right after boot, and you can effectively run the SBC 'headless'.
+
+## How it Works
+
+The Ethernet packets are captured using a Packet Capture utility, called pcap, sometimes know as a 'network sniffer'.
+Only packets for the Desk are captured, **all other normal (TCP and UDP) network traffic is ignored** by use of a capture filter.
+This takes the place of a 'Network Driver', which you often find comes on a disk with these kinds of devices and you have to install it, giving it very low level access to your PC.
+ReaControl requires your to give it permission every time you run it, so it is as secure if not more so than a driver.
+ReaControl's 'daemon' process then deals with this network traffic, and passes it to its 'client' process.
+The 'client' process translates the Desk's midi-like binary language to OSC and vice-versa, passing binary messages back to the 'daemon' process which then sends them back as network packets to the Desk.
+Finally, the OSC messages are sent as normal TCP/IP packets to the Reaper.OSC extension, which drives the DAW, according to the mappings found in the control file, OR in the Actions list. Return OSC messages are sent back to the 'client' process for the return trip, again as normal TCP/IP packets.
+
+Each component can be on a separate computer, or all on the same one.
+
+Some basic stateful mode handling is provided by the 'client' process to receive text from the DAW and display it on the scribble strips, handle controls which can toggle, and deal with issues like fader command echos.
+
+You will need super user (or elevated Administrator in Windows) privileges to use this software (specifically the daemon process'), as it uses packet capture libraries (libpcap / npcap) to establish network connectivity with the Desk ethernet interface. All other TCP and UDP traffic is ignored/filtered out, so you should not have any privacy concerns if the source has not been tampered with.
+
 
 ## Customisation
 
@@ -236,10 +253,10 @@ A starting Reaper.OSC file is provided with some basic mappings to the OSC addre
 To make a new mapping, check out the help text in the Default Reaper.OSC file provided by Cockos
 Add lines with the token at the start, then followed by the OSC address pattern.
 
-The schema (i.e. the OSC addresses generated by the control24osc.py) is determined by the control24map.py file, each 'address' attribute being appended to the path for the relevant control.
+The schema (i.e. the OSC addresses generated by the osc clients) is determined by the <desk>map.py file for each device model, each 'address' attribute being appended to the path for the relevant control.
 One of the easiest ways to find an address is run the OSC client with the debug switch added, then press the button or control. The address and other information will be appended to the log.
 
-For an entry in the control24map.py, you can use the attribute 'CmdClass' to identify the python class that will define the handler for the control. In this way you can implement more complex logic in a python class over and above the 'duh send this address' default. This is faders, scribble strips etc. are set up already, so that pattern can be followed.
+For an entry in the <desk>map.py, you can use the attribute 'CmdClass' to identify the python class that will define the handler for the control. In this way you can implement more complex logic in a python class over and above the 'duh send this address' default. This is faders, scribble strips etc. are set up already, so that pattern can be followed.
 
 Other attributes determine how the tree is 'walked' according to the binary received from the desk. Byte numbers are zero origin, the first denotes the actual command:
     ChildByte       which byte to look up to find the next child
@@ -255,6 +272,7 @@ Other attributes determine how the tree is 'walked' according to the binary rece
 ## Contributing
 
 Get a github account, and join in. That simple.
+There is some chatter on the Reaper Forums too, but when working, testing or contributing then GitHub is the way to go.
 
 This is freeware, non warranty, non commercial code to benefit the hungry children and hungrier DAW users of the world. If you pull and don't contribute, you should feel bad. Real bad. 
 Please develop here in this repo for the benefit of all. All pull/merge requests will be accepted and best efforts made to make sense of it all when merging. If a fork serves you better, then please feel free, but try to let us pull any good stuff you might come up with.
@@ -270,14 +288,14 @@ We will attempt to use [SemVer](http://semver.org/) for versioning. For the vers
 * **PhaseWalker18** - *Beer Consumption, code defecation*  (sadly no longer with us)
 * **DisruptorMon** - *Slave Driving, cheap beer supply, testing* 
 
-If you are feeling especially thankful for this entering your life, please feel free to send donations to this BTC address: 1BPQvQjcAGuMjBnG25wuoD64i7KmWZRrpN
+If you are feeling especially thankful for this entering your life, please feel free to send donations to this BTC address which goes to PhaseWalker's legacy: 1BPQvQjcAGuMjBnG25wuoD64i7KmWZRrpN
 
 ### Contributors
 
 * **phunkyg** - Current Maintainer
 * **lasloos** - Pro Control tester
 
-See also the list of contributors via github for the latest picture.
+See also the list of contributors via github for the latest picture. Thanks to everyone who gets involved. If you want to see your name here just shout up!
 
 ## License
 
@@ -289,7 +307,9 @@ All other intellectual property rights remain with the original owners.
 * **2mmi** - *Initial Idea, inspiration and saviour of us all
 
 
-## OSC SChema
+### OSC SChema
+
+# This is a draft section that will be updated as we discover more of the map
 
 Notes:
     Channel Strips are referred to as 'track'
