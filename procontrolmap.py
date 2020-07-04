@@ -25,12 +25,12 @@ MAPPING_TREE_PROC = {
         'TrackByteMask': 0x1F,
         'Children': {
             0x00: {
-                'Address': 'c24fader',
-                'CmdClass': 'C24fader'
+                'Address': 'reafader',
+                'CmdClass': 'reafader'
             },
             0x40: {
-                'Address': 'c24vpot',
-                'CmdClass': 'C24vpot'
+                'Address': 'reavpot',
+                'CmdClass': 'reavpot'
             }
         }
     },  # END L1 Dials/Faders
@@ -229,22 +229,22 @@ MAPPING_TREE_PROC = {
                             0x23: {
                                 'Address': 'ShiftAdd',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x24: {
                                 'Address': 'OptionAltAll',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x25: {
                                 'Address': 'ControlClutch',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x26: {
                                 'Address': 'CommandCtl',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                         }
                     },
@@ -276,7 +276,7 @@ MAPPING_TREE_PROC = {
                             0x00: {  # oddly placed, clock mode
                                 'Address': 'CounterMode',
                                 'Zone': 'Counter',
-                                'CmdClass': 'C24clock'
+                                'CmdClass': 'ReaClock'
                             },
                             0x01: {
                                 'Address': 'Info',
@@ -890,12 +890,12 @@ MAPPING_TREE_PROC = {
                             0x12: {
                                 'Address': 'Scrub',
                                 'LED': True,
-                                'CmdClass': 'C24jpot'
+                                'CmdClass': 'Reajpot'
                             },
                             0x13: {
                                 'Address': 'Shuttle',
                                 'LED': True,
-                                'CmdClass': 'C24jpot'
+                                'CmdClass': 'Reajpot'
                             }
                         }
 
@@ -939,9 +939,9 @@ MAPPING_TREE_PROC = {
                         'LED': True
                     },
                     0x05: {
-                        'Address': 'c24automode',
+                        'Address': 'reaautomode',
                         'Zone': 'Channel',
-                        'CmdClass': 'C24automode'  ## this button has 5 leds (WR,TC,LT,TM,RD)
+                        'CmdClass': 'reaautomode'  ## this button has 5 leds (WR,TC,LT,TM,RD)
                     },
                     0x06: {
                         'Address': 'ChannelSelect',
@@ -961,7 +961,7 @@ MAPPING_TREE_PROC = {
                     0x09: {
                         'Address': 'Touch',
                         'Zone': 'Faders',
-                        'CmdClass': 'C24fader'
+                        'CmdClass': 'reafader'
                     },
                     0x0B: {
                         'Address': 'Peak',

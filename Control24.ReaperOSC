@@ -21,18 +21,18 @@ DEVICE_EQ INSERT
 
 DEVICE_ROTARY_CENTER 0.5
 
-SCROLL_X- b/scroll/CursorLeft
-SCROLL_X+ b/scroll/CursorRight
-SCROLL_Y- b/scroll/CursorUp
-SCROLL_Y+ b/scroll/CursorDown
-ZOOM_X- b/zoom/CursorLeft
-ZOOM_X+ b/zoom/CursorRight
-ZOOM_Y- b/zoom/CursorUp
-ZOOM_Y+ b/zoom/CursorDown
-DEVICE_PREV_FX b/fxcursor/CursorLeft
-DEVICE_NEXT_FX b/fxcursor/CursorRight
-FX_PREV_PRESET b/fxcursor/CursorUp
-FX_NEXT_PRESET b/fxcursor/CursorDown
+SCROLL_X- b/reanav/scroll/CursorLeft
+SCROLL_X+ b/reanav/scroll/CursorRight
+SCROLL_Y- b/reanav/scroll/CursorUp
+SCROLL_Y+ b/reanav/scroll/CursorDown
+ZOOM_X- b/reanav/zoom/CursorLeft
+ZOOM_X+ b/reanav/zoom/CursorRight
+ZOOM_Y- b/reanav/zoom/CursorUp
+ZOOM_Y+ b/reanav/zoom/CursorDown
+DEVICE_PREV_FX b/reanav/fxcursor/CursorLeft
+DEVICE_NEXT_FX b/reanav/fxcursor/CursorRight
+FX_PREV_PRESET b/reanav/fxcursor/CursorUp
+FX_NEXT_PRESET b/reanav/fxcursor/CursorDown
 
 # All the clock values for 4 switchable modes
 SAMPLES s/clock/samples
@@ -63,40 +63,39 @@ REPEAT t/button/command/Transport/LoopPlay
 #GOTO_MARKER b/button/command/@
 GOTO_REGION b/button/command/@
 
-SCRUB r/scrub
-PLAY_RATE r/playrate/rotary
+SCRUB r/jpot/scrub
+PLAY_RATE r/jpot/playrate/rotary
 
-MASTER_VOLUME s/track/c24scribstrip/volume/25
+MASTER_VOLUME s/track/25/c24scribstrip/volume
 
-TRACK_NAME s/track/c24scribstrip/name/@
-TRACK_MUTE t/button/track/Mute/@
-TRACK_SOLO t/button/track/Solo/@
-TRACK_REC_ARM t/button/track/RecArm/@
+TRACK_NAME s/track/@/c24scribstrip/name
+TRACK_MUTE t/button/track/@/Mute
+TRACK_SOLO t/button/track/@/Solo
+TRACK_REC_ARM t/button/track/@/RecArm
 
-TRACK_SELECT t/button/track/ChannelSelect/@
+TRACK_SELECT t/button/track/@/ChannelSelect
 
-TRACK_VOLUME n/track/c24fader/@ s/track/c24scribstrip/volume/@
-TRACK_PAN n/track/c24vpot/@ s/track/c24scribstrip/pan/@
+TRACK_VOLUME n/track/@/reafader s/track/@/c24scribstrip/volume
+TRACK_PAN n/track/@/reavpot s/track/@/c24scribstrip/pan
 
-TRACK_VU_L n/track/c24vumeter/0/@
-TRACK_VU_R n/track/c24vumeter/1/@
+TRACK_VU_L n/track/@/reavumeter/0
+TRACK_VU_R n/track/@/reavumeter/1
+MASTER_VU_L n/track/25/reavumeter/0
+MASTER_VU_R n/track/25/reavumeter/1
 
-MASTER_VU_L n/track/c24vumeter/0/25
-MASTER_VU_R n/track/c24vumeter/1/25
+TRACK_SEND_VOLUME s/track/@/c24scribstrip/send/volume
 
-TRACK_SEND_VOLUME s/track/c24scribstrip/send/volume/@
+TRACK_AUTO_TRIM t/track/@/reaautomode/trim
+TRACK_AUTO_READ t/track/@/reaautomode/read
+TRACK_AUTO_LATCH t/track/@/reaautomode/latch
+TRACK_AUTO_TOUCH t/track/@/reaautomode/touch
+TRACK_AUTO_WRITE t/track/@/reaautomode/write
 
-TRACK_AUTO_TRIM t/track/c24automode/trim/@
-TRACK_AUTO_READ t/track/c24automode/read/@
-TRACK_AUTO_LATCH t/track/c24automode/latch/@
-TRACK_AUTO_TOUCH t/track/c24automode/touch/@
-TRACK_AUTO_WRITE t/track/c24automode/write/@
-
-FX_PRESET s/track/c24scribstrip/info/@
-FX_EQ_OPEN_UI t/button/track/EQ/@
-FX_INST_OPEN_UI t/button/track/Dynamics/@	
+FX_PRESET s/track/@/c24scribstrip/info
+FX_EQ_OPEN_UI t/button/track/@/EQ
+FX_INST_OPEN_UI t/button/track/@/Dynamics
 #Next one doesn’t seem to work very well
-FX_OPEN_UI b/button/track/Inserts/@
+FX_OPEN_UI b/button/track/@/Inserts
 
 DEVICE_PREV_TRACK_BANK t/button/command/EditMode+Function+Banks/Left
 DEVICE_NEXT_TRACK_BANK t/button/command/EditMode+Function+Banks/Right
@@ -106,17 +105,17 @@ DEVICE_NEXT_TRACK_BANK t/button/command/EditMode+Function+Banks/Right
 
 # for notes, if two, first wildcard is channel (0-15). MIDI note number is required (as decimal integer only!)
 # if parameter value is 0, note-off, otherwise note-on
-VKB_MIDI_NOTE i/vkb_midi/@/note/@ f/vkb_midi/@/note/@ i/vkb_midi/note/@ f/vkb_midi/note/@
+#VKB_MIDI_NOTE i/vkb_midi/@/note/@ f/vkb_midi/@/note/@ i/vkb_midi/note/@ f/vkb_midi/note/@
 # similar, but for 0xA0 (poly aftertouch)
-VKB_MIDI_POLYAFTERTOUCH i/vkb_midi/@/polyaftertouch/@ f/vkb_midi/@/polyaftertouch/@ i/vkb_midi/polyaftertouch/@ f/vkb_midi/polyaftertouch/@
+#VKB_MIDI_POLYAFTERTOUCH i/vkb_midi/@/polyaftertouch/@ f/vkb_midi/@/polyaftertouch/@ i/vkb_midi/polyaftertouch/@ f/vkb_midi/polyaftertouch/@
 # for CCs, if two, first wildcard is channel (0-15). MIDI CC number is required (as decimal integer only!)
-VKB_MIDI_CC i/vkb_midi/@/cc/@ f/vkb_midi/@/cc/@ i/vkb_midi/cc/@ f/vkb_midi/cc/@ 
+#VKB_MIDI_CC i/vkb_midi/@/cc/@ f/vkb_midi/@/cc/@ i/vkb_midi/cc/@ f/vkb_midi/cc/@
 # program change (0xC0) can take channel as wildcard, or value only
-VKB_MIDI_PROGRAM i/vkb_midi/@/program f/vkb_midi/@/program i/vkb_midi/program f/vkb_midi/program
+#VKB_MIDI_PROGRAM i/vkb_midi/@/program f/vkb_midi/@/program i/vkb_midi/program f/vkb_midi/program
 # channel pressure (aftertouch) (0xD0) can take channel as wildcard, or value only
-VKB_MIDI_CHANNELPRESSURE i/vkb_midi/@/channelpressure f/vkb_midi/@/channelpressure i/vkb_midi/channelpressure f/vkb_midi/channelpressure
+#VKB_MIDI_CHANNELPRESSURE i/vkb_midi/@/channelpressure f/vkb_midi/@/channelpressure i/vkb_midi/channelpressure f/vkb_midi/channelpressure
 # pitch can take channel as wildcard, or value only
-VKB_MIDI_PITCH i/vkb_midi/@/pitch f/vkb_midi/@/pitch i/vkb_midi/pitch f/vkb_midi/pitch
+#VKB_MIDI_PITCH i/vkb_midi/@/pitch f/vkb_midi/@/pitch i/vkb_midi/pitch f/vkb_midi/pitch
 
 
 #/vkb_midi/0/cc/90 [63]
@@ -127,8 +126,8 @@ VKB_MIDI_PITCH i/vkb_midi/@/pitch f/vkb_midi/@/pitch i/vkb_midi/pitch f/vkb_midi
 ACTION i/action s/action/str t/action/@ f/action/@/cc
 ACTION_SOFT f/action/@/cc/soft
 ACTION_RELATIVE f/action/@/cc/relative
-MIDIACTION i/midiaction t/midiaction/@
-MIDILISTACTION i/midilistaction t/midilistaction/@
+#MIDIACTION i/midiaction t/midiaction/@
+#MIDILISTACTION i/midilistaction t/midilistaction/@
 
 
 
@@ -140,54 +139,54 @@ MIDILISTACTION i/midilistaction t/midilistaction/@
 #ACTION_RELATIVE f/action/974/cc/relative
  
 # Looking good
-MASTER_PAN s/track/c24scribstrip/pan/30
-LAST_TOUCHED_FX_PARAM_NAME s/track/c24scribstrip/ltfxpn/30
-LAST_TOUCHED_FX_PARAM_VALUE s/track/c24scribstrip/ltfxpv/31
+MASTER_PAN s/track/30/c24scribstrip/pan
+LAST_TOUCHED_FX_PARAM_NAME s/track/30/c24scribstrip/ltfxpn
+LAST_TOUCHED_FX_PARAM_VALUE s/track/31/c24scribstrip/ltfxpv
 
 # Looking odd
 #Says 'balance' etc. when pan has 2 knobs
-#TRACK_PAN2 s/track/c24scribstrip/pan2/@
+#TRACK_PAN2 s/track/@/c24scribstrip/pan2
 
 #Needs the send number 
-#TRACK_SEND_NAME s/track/c24scribstrip/send_name/@
-#TRACK_SEND_VOLUME s/track/c24scribstrip/name/@
-#TRACK_SEND_PAN s/track/c24scribstrip/send_pan/@
-#TRACK_RECV_NAME s/track/c24scribstrip/recv_name/@
-#TRACK_RECV_VOLUME s/track/c24scribstrip/rec_name/@
-#TRACK_RECV_PAN s/track/c24scribstrip/recv_pan/@
+#TRACK_SEND_NAME s/track/@/c24scribstrip/send_name/@
+#TRACK_SEND_VOLUME s/track/@/c24scribstrip/name/@
+#TRACK_SEND_PAN s/track/@/c24scribstrip/send_pan/@
+#TRACK_RECV_NAME s/track/@/c24scribstrip/recv_name/@
+#TRACK_RECV_VOLUME s/track/@/c24scribstrip/rec_name/@
+#TRACK_RECV_PAN s/track/@/c24scribstrip/recv_pan/@
 
 # Experimental
 
-MARKER_NAME s/track/c24scribstrip/mna/30
-MARKER_NUMBER s/track/c24scribstrip/mnu/31
-REGION_NAME s/track/c24scribstrip/rna/30
-REGION_NUMBER s/track/c24scribstrip/rnu/31
-LAST_MARKER_NAME s/track/c24scribstrip/lmna/30
-LAST_MARKER_NUMBER s/track/c24scribstrip/lmnu/31
-LAST_REGION_NAME s/track/c24scribstrip/lrna/30
-LAST_REGION_NUMBER s/track/c24scribstrip/lrnu/31
+MARKER_NAME s/track/30/c24scribstrip/mna
+MARKER_NUMBER s/track/31/c24scribstrip/mnu
+REGION_NAME s/track/30/c24scribstrip/rna
+REGION_NUMBER s/track/31/c24scribstrip/rnu
+LAST_MARKER_NAME s/track/30/c24scribstrip/lmna
+LAST_MARKER_NUMBER s/track/31/c24scribstrip/lmnu
+LAST_REGION_NAME s/track/30/c24scribstrip/lrna
+LAST_REGION_NUMBER s/track/31/c24scribstrip/lrnu
 
-TRACK_PAN_MODE s/track/c24scribstrip/pan_mode/@
+TRACK_PAN_MODE s/track/@/c24scribstrip/pan_mode
 
-TRACK_AUTO s/track/c24scribstrip/auto/@
+TRACK_AUTO s/track/@/c24scribstrip/auto
 
-FX_NAME s/track/c24scribstrip/fxna/@
-FX_NUMBER s/track/c24scribstrip/fxnu/@
+FX_NAME s/track/@/c24scribstrip/fxna
+FX_NUMBER s/track/@/c24scribstrip/fxnu
 
-FX_PRESET s/track/c24scribstrip/fxpr/@
+FX_PRESET s/track/@/c24scribstrip/fxpr
 
-FX_PARAM_NAME s/track/c24scribstrip/fxpna/@
-FX_PARAM_VALUE s/track/c24scribstrip/fxpva/@
+FX_PARAM_NAME s/track/@/c24scribstrip/fxpna
+FX_PARAM_VALUE s/track/@/c24scribstrip/fxpva
 
-FX_INST_NAME s/track/c24scribstrip/fxinstn/@
-FX_INST_PRESET s/track/c24scribstrip/fxinstp/@
-FX_INST_PARAM_NAME s/track/c24scribstrip/fxinstpn/@
-FX_INST_PARAM_VALUE s/track/c24scribstrip/fxinstpv/@
+FX_INST_NAME s/track/@/c24scribstrip/fxinstn
+FX_INST_PRESET s/track/@/c24scribstrip/fxinstp
+FX_INST_PARAM_NAME s/track/@/c24scribstrip/fxinstpn
+FX_INST_PARAM_VALUE s/track/@/c24scribstrip/fxinstpv
 
-LAST_TOUCHED_FX_TRACK_NAME s/track/c24scribstrip/ltfxtn/30
-LAST_TOUCHED_FX_TRACK_NUMBER s/track/c24scribstrip/ltfxtnu/31
-LAST_TOUCHED_FX_NAME s/track/c24scribstrip/ltfxn/30
-LAST_TOUCHED_FX_NUMBER s/track/c24scribstrip/ltfxnu/31
+LAST_TOUCHED_FX_TRACK_NAME s/track/@/c24scribstrip/ltfxtn
+LAST_TOUCHED_FX_TRACK_NUMBER s/track/@/c24scribstrip/ltfxtnu
+LAST_TOUCHED_FX_NAME s/track/@/c24scribstrip/ltfxn
+LAST_TOUCHED_FX_NUMBER s/track/@/c24scribstrip/ltfxnu
 
 # added by Disruptormon - 28/09/18
 #ACTION action/40078 t/button/command/Window+ZoomPresets+Navigation/Mix

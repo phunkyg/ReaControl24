@@ -19,9 +19,9 @@ from optparse import OptionError
 
 import pcap
 
-from control24common import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
-                             opts_common, tick, fix_ownership, SIGNALS,
-                             start_logging, trace)
+from ReaCommon import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
+                       opts_common, tick, fix_ownership, ReaQuit,
+                       start_logging, trace)
 
 #--MULTI can we import the client scripts?
 import control24osc as control24_client
@@ -55,6 +55,8 @@ TIMING_KEEP_ALIVE = 10          # Delta time before a KA to desk is considered d
 TIMING_KEEP_ALIVE_LOOP = 1      # How often to check if a KA is due
 TIMING_BEFORE_ACKT = 0.0008     # Delta between packet arriving and ACK being sent
 TIMING_MAIN_LOOP = 6            # Loop time for main, which does nothing
+TIMING_SHUTDOWN_ACTIONS = 0.5   # bit of wait time when shuttind down
+TIMING_SNIFFER_TIMEOUT = 1000   # milliseconds passed to the pcap timeout
 TIMING_LISTENER_POLL = 2        # Poll time for MP Listener to wait for data
 TIMING_LISTENER_RECONNECT = 1   # Pause before a reconnect attempt is made
 TIMING_WAIT_DESC_ACK = 0.1      # Wait period for desk to ACK after send, before warning is logged
@@ -79,17 +81,7 @@ PCAP_FILTER = '(ether dst %s or broadcast) and ether[12:2]=0x885f'
 # END Globals
 
 # START functions
-def signal_handler(sig, stackframe):
-    """Exit the daemon if a signal is received"""
-    #Consider deprecating as it does not seem to work
-    global NETHANDLER
-    log = logging.getLogger(__name__)
-    signals_dict = dict((getattr(signal, n), n) for n in dir(signal)
-                        if n.startswith('SIG') and '_' not in n)
-    log.info("daemon shutting down as %s received.", signals_dict[sig])
-    if not NETHANDLER is None:
-        NETHANDLER.close()
-    sys.exit(0)
+
 
 
 def compare_ctype_array(arr1, arr2):
@@ -256,36 +248,6 @@ def c24packet_factory(prm_tot_len=None, prm_data_len=None):
     return C24Packet
 
 
-class Sniffer(threading.Thread):
-    """Thread class to hold the packet sniffer loop
-    and ensure it is interruptable"""
-    #--MULTI refactor c24session to nethandler
-    def __init__(self, nethandler):
-        super(Sniffer, self).__init__()
-        self.daemon = True
-        self.name = 'thread_sniffer'
-        self.nethandler = nethandler
-        network = self.nethandler.network.get('pcapname')
-        self.nethandler.pcap_sess = self.nethandler.fpcapt.pcap(
-            name=network,
-            promisc=True,
-            immediate=True,
-            timeout_ms=50
-            )
-        filtstr = PCAP_FILTER % self.nethandler.mac_computer_str
-        self.nethandler.pcap_sess.setfilter(filtstr)
-        self.nethandler.is_capturing = True
-        self.pcap_sess = self.nethandler.pcap_sess
-        self.packet_handler = self.nethandler.packet_handler
-
-    def run(self):
-        """pcap loop, runs until interrupted"""
-        try:
-            for pkt in self.pcap_sess:
-                if not pkt is None:
-                    self.packet_handler(*pkt)
-        except KeyboardInterrupt:
-            self.nethandler.is_capturing = False
 
 
 class KeepAlive(threading.Thread):
@@ -301,7 +263,7 @@ class KeepAlive(threading.Thread):
         """keep alive loop"""
         log = logging.getLogger(__name__)
         while not self.session.is_closing:
-            if self.session.parent.is_capturing and not self.session.mac_device is None:
+            if self.session.parent.is_capturing and self.session.mac_device is not None:
                 delta = tick() - self.session.pcap_last_sent
                 if delta >= TIMING_KEEP_ALIVE:
                     log.trace('%s KeepAlive TO DEVICE', self.session.session_name)
@@ -334,7 +296,7 @@ class ManageListener(threading.Thread):
         # Loop to manage connect/disconnect events
         while not self.session.is_closing:
             try:
-                while self.session.client_is_connected:
+                while self.session.client_is_connected and not self.session.is_closing:
                     buffsz = 0
                     if self.mp_conn.poll(TIMING_LISTENER_POLL):
                         incrsz = self.mp_conn.recv_bytes_into(
@@ -373,6 +335,61 @@ class ManageListener(threading.Thread):
             self.session.client_is_connected = False
             self.session.client_conn.close()
             self.session.parent_conn.close()
+
+
+class Sniffer(threading.Thread):
+    """Thread class to hold the packet sniffer loop
+    and ensure it is interruptable"""
+    #--MULTI refactor c24session to nethandler
+    def __init__(self, nethandler):
+        super(Sniffer, self).__init__()
+        self.daemon = True
+        self.name = 'thread_sniffer'
+        self.nethandler = nethandler
+        network = self.nethandler.network.get('pcapname')
+        # Set up the pcas session
+        # comment from the lib:
+            # timeout_ms -- requests for the next packet will return None if the timeout
+            #               (in milliseconds) is reached and no packets were received
+            #               (Default: no timeout)
+        self.nethandler.pcap_sess = self.nethandler.fpcapt.pcap(
+            #timeout_ms=TIMING_SNIFFER_TIMEOUT
+            name=network,
+            snaplen=65535,
+            promisc=False,
+            immediate=True,
+            )
+        filtstr = PCAP_FILTER % self.nethandler.mac_computer_str
+        self.nethandler.pcap_sess.setfilter(filtstr)
+        # experiment!
+        self.nethandler.pcap_sess.setnonblock()
+        # Store as a few attributes
+        self.nethandler.is_capturing = False
+        self.pcap_sess = self.nethandler.pcap_sess
+        self.packet_handler = self.nethandler.packet_handler
+
+
+    def run(self):
+        """pcap loop, runs until interrupted. blocks the main
+        program for graceful exit"""
+        log = logging.getLogger(__name__)
+        log.info('Capture Starting')
+        self.nethandler.is_capturing = True
+        try:
+            # Known to work but unbreakable it seems
+            # for pkt in self.pcap_sess:
+            #     if pkt is not None:
+            #         self.packet_handler(*pkt)
+            while not self.nethandler.is_closing:
+                self.packet_handler(*self.pcap_sess.next())
+        except KeyboardInterrupt:
+            log.debug('Sniffer: KeyboardInterrupt')
+        except ReaQuit:
+            log.debug('Sniffer: ReaQuit')
+        self.nethandler.is_capturing = False
+        self.nethandler.close()
+        log.info('Capture Finished')
+
 
 #--MULTI New Listener class
 # currently a full copy/paste of C24Session
@@ -436,7 +453,7 @@ class NetworkHandler(object):
         """Constructor to build the network handler object"""
         log = start_logging(__name__, opts.logdir, opts.debug)
         log.info('Network Handler Started')
-        trace(log, 'Options %s', str(opts))
+        log.debug('Options %s', str(opts))
         #--MULTI add a Sessions dict
         self.sessions = {}
         self.num_sessions = 0
@@ -454,36 +471,6 @@ class NetworkHandler(object):
         self.mac_computer = MacAddress.from_buffer_copy(bytearray.fromhex(self.mac_computer_str.replace(':', '')))
         self.thread_pcap_loop = Sniffer(self)
         self.thread_pcap_loop.start()
-        #--MULTI move MP to session
-        #self.mp_listener = None
-        #self.mp_is_connected = False
-        #self.mp_conn = None
-        #--MULTI will probably call back to listener for pcap sends
-        # but pacing etc will need to be per device
-        #self.pcap_last_sent = tick()
-        #self.pcap_last_packet = None
-        #self.current_retry_desk = 0
-        #--MULTI command number sequences will most likely be per device
-        #self.cmdcounter = c_uint32(0)
-        # desk-to-daw (cmdcounter) and daw-to-desk (sendcounter)
-        #self.cmdcounter = 0
-        #self.sendcounter = 1
-        #self.sendlock = threading.Event()
-        #self.sendlock.set()
-        #self.backoff = threading.Timer(TIMING_BACKOFF, self._backoff)
-        #self.mac_control24 = None
-        #--MULTI gonna say this probably won't be terribly useful here move into session
-        # build a re-usable Ethernet Header for sending packets
-        #self.ethheader = EthHeader()
-        #self.ethheader.macsrc = self.mac_computer
-        # Start the pcap loop background thread
-        #--MULTI this will need to be per device/session
-        # Start a thread to keep sending packets to desk to keep alive
-        #self.thread_keepalive = KeepAlive(self)
-        #self.thread_keepalive.start()
-        # Start a thread to manager the MP listener
-        #self.thread_listener = ManageListener(self)
-        #self.thread_listener.start()
 
     def __str__(self):
         """pretty print handler state if requested"""
@@ -494,13 +481,20 @@ class NetworkHandler(object):
         """Quit the handler gracefully if possible"""
         log = logging.getLogger(__name__)
         log.info("NetworkHandler closing")
-        # For threads under direct control this signals to please end
-        self.is_closing = True
         #--MULTI call a close for each session
         for mac, sess in self.sessions.iteritems():
             log.info("Closing DeviceSession for %s", mac)
             sess.close()
-        # PCAP thread has its own KeyboardInterrupt handle
+
+
+        # For threads under direct control this signals to please end
+        self.is_closing = True
+        # Experimental - stop the sniffer
+        # Doesn't work: self.pcap_sess.close()
+
+        # Join threads to ensure they close (none)
+        #self.thread_pcap_loop.join()
+
         log.info("NetworkHandler closed")
 
     def __del__(self):
@@ -509,12 +503,14 @@ class NetworkHandler(object):
         trace(log, "NetworkHandler del")
         self.close()
 
+
 # Main sesssion class
 class DeviceSession(object):
     """Class to contain all session details with a control surface device.
     Now handler multiple sessions!"""
 
     c24cmds = COMMANDS
+
     # callbacks / event handlers (threaded)
     def packet_handler(self, packet):
         """Device Session Packet Handler. If packet was for
@@ -567,7 +563,7 @@ class DeviceSession(object):
             log.warn('Waiting for DESK ACK %d', totalwait)
             #TODO implement daw-desk retry packets
         trace(log, 'TODESK CMD %d', self.sendcounter)
-        if not self.mac_device is None:
+        if self.mac_device is not None:
             packet = self._prepare_packetr(pkt_data, pkt_data_len, ncmds)
             self.send_packet(packet)
             self.sendlock.clear()
@@ -622,10 +618,11 @@ class DeviceSession(object):
 
     #--MULTI new process launcher
     def start_client(self):
+        """start the appropriate client for the device"""
         log = logging.getLogger(__name__)
         device = self.bcast_data.device
         if device == 'CNTRL|24':
-            target = control24_client.C24oscsession
+            target = control24_client.C24Oscsession
             self.is_supported_device = True
         elif device == 'MAINUNIT':
             target = procontrol_client.ProCoscsession
@@ -637,7 +634,7 @@ class DeviceSession(object):
 
         if self.is_supported_device:
             self.client_process = Process(target=target, args=self.client_args)
-            self.client_process.daemon = False
+            self.client_process.daemon = True
             try:
                 self.client_process.start()
             except RuntimeError:
@@ -672,7 +669,6 @@ class DeviceSession(object):
         #--MULTI new session things
         self.parent = parent
         self.session_number = number
-        self.session_name = 'device session {}'.format(self.session_number)
         self.daw_address = None
         self.new_port()
         self.mac_device = MacAddress.from_buffer_copy(device_mac)
@@ -682,13 +678,12 @@ class DeviceSession(object):
             bcast_data.version,
             hexl(self.mac_device)
         )
+        self.session_name = 'DevSess{} {}'.format(self.session_number, self.bcast_data.device)
         self.client_process = None
         self.parent_conn, self.client_conn = Pipe()
         self.client_is_connected = False
-        #--MULTI slightly hacky, but preparing the client instance arguments in the same format
-        # as they are used when launching as a command line process
-        #self.client_args = ({'connect': self.daw_address}, self.parent.network, self.client_conn)
-        #--MULTI trying passing all the opts through
+        # Build up client arguments. Could be cleaned up in future
+        # but this for the moment retains the Subprocess or standalone pattern
         self.client_args = (self.parent.thru_params[0], self.parent.network, self.client_conn)
         self.is_closing = False
         self.is_supported_device = False
@@ -728,10 +723,18 @@ class DeviceSession(object):
         log.info("%s closing", self.session_name)
         # For threads under direct control this signals to please end
         self.is_closing = True
-        # A bit of encouragement
-        if self.client_is_connected and not self.client_process is None:
-            if self.client_process.is_alive():
-                self.client_process.terminate()
+        # Join threads until they finish
+        log.debug('%s Waiting for thread shutdown', self.session_name)
+        self.thread_keepalive.join()
+        self.thread_listener.join()
+        # Close the pipe to indicate to the subprocess it should end
+        # self.client_conn.close()
+        # self.parent_conn.close()
+        # self.client_process.terminate()
+        # while self.client_process.is_alive():
+        #     log.debug('%s waiting for client process shutdown', self.session_name)
+        #     time.sleep(TIMING_SHUTDOWN_ACTIONS)
+
         # PCAP thread has its own KeyboardInterrupt handle
         log.info("%s closed", self.session_name)
 
@@ -742,7 +745,24 @@ class DeviceSession(object):
         self.close()
 
 
-# END classes
+
+
+
+# functions for main
+def signal_handler(sig, stackframe):
+    """Exit the daemon if a signal is received"""
+    log = logging.getLogger(__name__)
+    signals_dict = dict((getattr(signal, n), n) for n in dir(signal)
+                        if n.startswith('SIG') and '_' not in n)
+    signame = signals_dict[sig]
+    log.info("Signal Handler %s received.", signame)
+    raise ReaQuit(signame)
+
+
+def signal_dumpo(sig, stackframe):
+    """Signal info dumper for debugging"""
+    log = logging.getLogger(__name__)
+    log.debug(str(stackframe))
 
 # START main program
 def main():
@@ -758,12 +778,12 @@ def main():
     default_iface, default_ip = networks.get_default()
 
     # program options
-    oprs = opts_common("control24d Communication Daemon")
+    oprs = opts_common("ReaControl Communication Daemon")
     oprs.add_option(
         "-n",
         "--network",
         dest="network",
-        help="Ethernet interface to the same network as the Control24. Default = %s" %
+        help="Ethernet interface to the same network as the Desk. Default = %s" %
         default_iface)
     # default_listener = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('daemon'))
     # oprs.add_option(
@@ -772,12 +792,12 @@ def main():
     #     dest="listen",
     #     help="listen on given host:port. Default = %s" % default_listener)
     # TODO did this to get it going but 9124 port will also need an auto-increment or alternative range
-    default_osc_client24 = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('control24osc'))
+    default_osc_client = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscport'))
     oprs.add_option(
         "-l",
         "--listen",
         dest="listen",
-        help="accept OSC client from DAW at host:port. default %s" % default_osc_client24)
+        help="accept OSC client from DAW at host:port. default %s" % default_osc_client)
     default_daw = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscDaw'))
     oprs.add_option(
         "-c",
@@ -786,7 +806,7 @@ def main():
         help="Connect to DAW OSC server at host:baseport. Baseport will increment for subsequent devices. default %s" % default_daw)
     oprs.set_defaults(network=default_iface)
     #oprs.set_defaults(listen=default_listener)
-    oprs.set_defaults(listen=default_osc_client24)
+    oprs.set_defaults(listen=default_osc_client)
     oprs.set_defaults(connect=default_daw)
 
     # Parse and verify options
@@ -803,34 +823,57 @@ def main():
     if not networks.is_valid_ipstr(opts.connect):
         raise OptionError('Not a valid ipv4 address and port ', 'connect')
 
-    #--MULTI - need a session independent netowrk listener/dispatcher thread here!
-    if NETHANDLER is None:
-        NETHANDLER = NetworkHandler(opts, networks) # No idea if these will be the right params yet
+    # DEBUG signal dumper
+    #
+    # all_sigs = dict((getattr(signal, n), n) for n in dir(signal)
+    #                     if n.startswith('SIG') and '_' not in n and n not in ['SIGKILL', 'SIGINT', 'SIGSTOP'])
+    #
+    # for sig in all_sigs:
+    #     print sig
+    #     signal.signal(sig, signal_dumpo)
+    #
+    # The problem with using signal.pause is SIGCHLD is raised by the launch
+    # of subprocess
+    # using the ReaQuit instead when we get a signal per the below lists
+    # END DEBUG
 
-    #--MULTI - init a session only when we see a device?
-    # Build the C24Session
-    #if SESSION is None:
-    #    SESSION = C24session(opts, networks)
 
-    # Main thread when everything is initiated. Wait for interrupt
+    # Set up Interrupt signal handler so process can close cleanly
+    # if an external signal is received
     if sys.platform.startswith('win'):
-        # Set up Interrupt signal handler so daemon can close cleanly
-        for sig in SIGNALS:
-            signal.signal(sig, signal_handler)
-        while True:
-            try:
-                time.sleep(TIMING_MAIN_LOOP)
-            except KeyboardInterrupt:
-                break
+        # TODO test these in Winders
+        #['CTRL_BREAK_EVENT', 'CTRL_C_EVENT', 'NSIG', 'SIGABRT', 'SIGBREAK', 'SIGFPE', 'SIGILL', 'SIGINT', 'SIGSEGV',
+        # 'SIGTERM', 'SIG_DFL', 'SIG_IGN', '__doc__', '__name__', '__package__', 'default_int_handler', 'getsignal',
+        # 'set_wakeup_fd', 'signal']
+        signals = [signal.SIGBREAK, signal.SIGTERM]
     else:
-        #signal.pause()
-        #--MULTI try this for a bit as above is going crayzee   
-        for sig in SIGNALS:
-            signal.signal(sig, signal_handler) 
-    
+        # This 'just works' somehow on osx and raspbian
+        signals = [signal.SIGHUP]
+
+    for sig in signals:
+        signal.signal(sig, signal_handler)
+
+    # session independent netowrk listener/dispatcher thread
+    # Begins then drops through to the wait below.
+    # This allows signal capture as well as
+    # Keyboard interrupt CTRL+C
+    if NETHANDLER is None:
+        NETHANDLER = NetworkHandler(opts, networks)
+
+    # Idle until one of the quit conditions is met
+
+    try:
         while True:
             time.sleep(TIMING_MAIN_LOOP)
+    except ReaQuit:
+        print '**ReaQuit'
+    except KeyboardInterrupt:
+        print '**KeyboardInterrupt'
+    except Exception:
+        print '**UnhandledException'
+        raise
 
+    print '**Closing'
     NETHANDLER.close()
 
 

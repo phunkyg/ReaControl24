@@ -2,7 +2,7 @@ import pcap
 import threading
 import time
 
-from control24common import (NetworkHelper, hexl, COMMANDS)
+from ReaCommon import (NetworkHelper, hexl, COMMANDS)
 
 from ReaControl import (c24packet_factory, C24BcastData, C24Header, EthHeader, MacAddress)
 
@@ -13,7 +13,7 @@ PCAP_FILTER = 'ether src %s and ether[12:2]=0x885f'
 
 MAC = '00:a0:7e:a0:17:fe'
 #DEVICE = 'MAINUNIT'
-DEVICE = 'MAINUNIT'
+DEVICE = 'CNTRL|24'
 VERSION = '1.37'
 
 ADAPTER = 'en0'
@@ -26,7 +26,6 @@ NETWORKS = NetworkHelper()
 STATE = 0
 
 C_CNT = 0
-S_CNT = 0
 
 THREAD_PCAP_LOOP = None
 ACK_PACKET = None
@@ -109,7 +108,7 @@ class SnifferForEmulator(threading.Thread):
             return True
 
 def make_bcast_packet():
-    #make up a broadcast packet like a device
+    # make up a broadcast packet like a device
     bcast_packet = c24packet_factory(prm_data_len = 33)()
 
     bcast_packet.struc.ethheader = EthHeader()
@@ -136,11 +135,10 @@ def make_ack_packet():
 
     return ack_packet
 
-def make_test_packet():
-    global PC_MAC, S_CNT, TEST_PACKETS
-    S_CNT += 1
+def make_test_packet(cnt):
+    global PC_MAC, TEST_PACKETS
     # Get the next test packet data from the list
-    pdata = TEST_PACKETS[S_CNT % len(TEST_PACKETS)]
+    pdata = TEST_PACKETS[cnt % len(TEST_PACKETS)]
     pdata_len = len(pdata)
     test_packet = c24packet_factory(prm_data_len=pdata_len)()
     test_packet.struc.ethheader = EthHeader()
@@ -149,7 +147,8 @@ def make_test_packet():
 
     test_packet.struc.c24header.numcommands = 1
     test_packet.struc.c24header.numbytes = 16 + pdata_len
-    test_packet.struc.c24header.sendcounter = S_CNT
+    sc = int(cnt)
+    test_packet.struc.c24header.sendcounter = sc
     test_packet.struc.packetdata = (c_ubyte * pdata_len).from_buffer_copy(pdata)
 
     return test_packet
@@ -168,7 +167,7 @@ def main():
 
     bcast_packet = make_bcast_packet()
 
-
+    s_cnt = 1
 
     while THREAD_PCAP_LOOP.is_alive():
         # Send broacasts and wait for init
@@ -177,7 +176,9 @@ def main():
             THREAD_PCAP_LOOP.send_packet(bcast_packet)
         elif STATE == 1:
             time.sleep(TIMING_TEST_PACKET)
-            test_packet = make_test_packet()
+            s_cnt += 1
+            test_packet = make_test_packet(s_cnt)
+            log('Sending test packet: %s', str(test_packet))
             THREAD_PCAP_LOOP.send_packet(test_packet)
 
 if __name__ == '__main__':

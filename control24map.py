@@ -25,12 +25,12 @@ MAPPING_TREE = {
         'TrackByteMask': 0x1F,
         'Children': {
             0x00: {
-                'Address': 'c24fader',
-                'CmdClass': 'C24fader'
+                'Address': 'reafader',
+                'CmdClass': 'reafader'
             },
             0x40: {
-                'Address': 'c24vpot',
-                'CmdClass': 'C24vpot'
+                'Address': 'reavpot',
+                'CmdClass': 'reavpot'
             }
         }
     },  # END L1 Dials/Faders
@@ -274,22 +274,22 @@ MAPPING_TREE = {
                             0x23: {
                                 'Address': 'Shift',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x24: {
                                 'Address': 'Option',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x25: {
                                 'Address': 'Control',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x26: {
                                 'Address': 'Command',
                                 'Zone': 'Modifiers',
-                                'CmdClass': 'C24modifiers'
+                                'CmdClass': 'ReaModifiers'
                             },
                             0x27: {
                                 'Address': 'Auto-Select',
@@ -362,7 +362,7 @@ MAPPING_TREE = {
                                 'Zone': 'Window',
                                 'LED': True,
                                 'Toggle': True,
-                                'CmdClass': 'C24buttonled'
+                                'CmdClass': 'ReaButtonLed'
                             },
                             0x01: {
                                 'Address': 'Edit-Bypass',
@@ -403,44 +403,44 @@ MAPPING_TREE = {
                                 'Address': 'Nav',
                                 'Zone': 'Navigation',
                                 'LED': True,
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x0d: {
                                 'Address': 'Zoom',
                                 'Zone': 'Navigation',
                                 'LED': True,
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x0e: {
                                 'Address': 'SelAdj',
                                 'Zone': 'Navigation',
                                 'LED': True,
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x0f: {
                                 'Address': 'CursorUp',
                                 'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x10: {
                                 'Address': 'CursorLeft',
                                 'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x11: {
                                 'Address': 'CursorRight',
                                 'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x12: {
                                 'Address': 'CursorDown',
                                 'Zone': 'Navigation',
-                                'CmdClass': 'C24nav'
+                                'CmdClass': 'ReaNav'
                             },
                             0x13: {  # oddly placed, clock mode
                                 'Address': 'CounterMode',
                                 'Zone': 'Counter',
-                                'CmdClass': 'C24clock'
+                                'CmdClass': 'ReaClock'
                             }
                         }
                     },
@@ -527,7 +527,7 @@ MAPPING_TREE = {
                                 'Zone': 'Edit Mode',
                                 'LED': True,
                                 'Toggle': True,
-                                'CmdClass': 'C24buttonled'
+                                'CmdClass': 'ReaButtonLed'
                             },
                             0x04: {
                                 'Address': 'Cut',
@@ -746,12 +746,12 @@ MAPPING_TREE = {
                             0x12: {
                                 'Address': 'Scrub',
                                 'LED': True,
-                                'CmdClass': 'C24jpot'
+                                'CmdClass': 'ReaJpot'
                             },
                             0x13: {
                                 'Address': 'Shuttle',
                                 'LED': True,
-                                'CmdClass': 'C24jpot'
+                                'CmdClass': 'ReaJpot'
                             }
                         }
                     },
@@ -920,9 +920,9 @@ MAPPING_TREE = {
                         'LED': True
                     },
                     0x05: {
-                        'Address': 'c24automode',
+                        'Address': 'reaautomode',
                         'Zone': 'Channel',
-                        'CmdClass': 'C24automode'
+                        'CmdClass': 'reaautomode'
                     },
                     0x06: {
                         'Address': 'ChannelSelect',
@@ -942,7 +942,7 @@ MAPPING_TREE = {
                     0x09: {
                         'Address': 'Touch',
                         'Zone': 'Faders',
-                        'CmdClass': 'C24fader'
+                        'CmdClass': 'reafader'
                     },
                     0x0B: {
                         'Address': 'Peak',
