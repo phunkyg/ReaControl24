@@ -1692,11 +1692,17 @@ class _ReaOscsession(object):
                             exc_info=True
                         )
                 else:
-                    # NON CLASS based Desk-DAW i.e. basic buttons
-                    if 'button' in parsed_cmd.get('addresses'):
+                    addresses = parsed_cmd.get('addresses')
+                    # Reduce 'action' addresses down to a singleton address
+                    if 'action' in addresses:
+                        parsed_cmd[address] = '/action'
                         osc_msg = OSC.OSCMessage(address)
-                        if osc_msg is not None:
-                            self.osc_client_send(osc_msg, parsed_cmd.get('Value'))
+                    # NON CLASS based Desk-DAW i.e. basic buttons
+                    if 'button' in addresses:
+                        osc_msg = OSC.OSCMessage(address)
+                    # If an OSC message set up above then send the value
+                    if osc_msg is not None:
+                        self.osc_client_send(osc_msg, parsed_cmd.get('Value'))
 
     def _daw_to_desk(self, addr, tags, stuff, source):
         """message handler for the OSC listener
