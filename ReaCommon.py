@@ -1693,6 +1693,7 @@ class _ReaOscsession(object):
                         )
                 else:
                     addresses = parsed_cmd.get('addresses')
+                    osc_msg = None
                     # Reduce 'action' addresses down to a singleton address
                     if 'action' in addresses:
                         parsed_cmd[address] = '/action'
