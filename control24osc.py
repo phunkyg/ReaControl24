@@ -113,7 +113,7 @@ class C24desk(_ReaDesk):
 
         self.mapping_tree = control24map.MAPPING_TREE
         self.reabuttonled = ReaButtonLed(self, None)
-        self.clock = ReaClock(self)
+        self.reaclock = ReaClock(self)
 
         self.modemgr = ModeManager(C24desk.deskmodes)
         # Set up specifics for this device
