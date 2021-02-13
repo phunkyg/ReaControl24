@@ -381,7 +381,7 @@ class Sniffer(threading.Thread):
             #     if pkt is not None:
             #         self.packet_handler(*pkt)
             while not self.nethandler.is_closing:
-                self.packet_handler(*self.pcap_sess.next())
+                self.packet_handler(*next(self.pcap_sess))
         except KeyboardInterrupt:
             log.debug('Sniffer: KeyboardInterrupt')
         except ReaQuit:
@@ -482,7 +482,7 @@ class NetworkHandler(object):
         log = logging.getLogger(__name__)
         log.info("NetworkHandler closing")
         #--MULTI call a close for each session
-        for mac, sess in self.sessions.iteritems():
+        for mac, sess in self.sessions.items():
             log.info("Closing DeviceSession for %s", mac)
             sess.close()
 
@@ -866,14 +866,14 @@ def main():
         while True:
             time.sleep(TIMING_MAIN_LOOP)
     except ReaQuit:
-        print '**ReaQuit'
+        print('**ReaQuit')
     except KeyboardInterrupt:
-        print '**KeyboardInterrupt'
+        print('**KeyboardInterrupt')
     except Exception:
-        print '**UnhandledException'
+        print('**UnhandledException')
         raise
 
-    print '**Closing'
+    print('**Closing')
     NETHANDLER.close()
 
 
