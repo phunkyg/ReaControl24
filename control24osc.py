@@ -66,7 +66,7 @@ class C24Track(_ReaTrack):
         ]):
             self.reavumeter = ReaVumeter(self)
 
-        # Place a VU meter on virtual tracks above 24, these are bus VUs
+        # Place a VU meter on virtual tracks above 24, for the amount of bus vu tracks
         if all([
                 self.track_number >= self.desk.real_channels,
                 self.track_number <= self.desk.real_channels + self.desk.busvus
@@ -87,8 +87,8 @@ class C24desk(_ReaDesk):
     """Class to represent the desk, state and
     instances to help conversions and behaviour"""
     real_channels = 24
-    virtual_channels = 8
-    busvus = 1
+    virtual_channels = 3
+    busvus = 4
     deskmodes = {
         'Values': {
             'address': '/track/@/c24scribstrip/volume',
@@ -120,7 +120,7 @@ class C24desk(_ReaDesk):
         self.real_channels = C24desk.real_channels
         self.virtual_channels = C24desk.virtual_channels
         # There are several but only 1 mapped and active at this time
-        self.busvus = 1
+        self.busvus = C24desk.busvus
 
         self.instantiate_tracks(C24Track)
 
