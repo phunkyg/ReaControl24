@@ -374,7 +374,10 @@ class ModeManager(object):
     def set_mode(self, mode):
         """directly set the mode to the key requested"""
         if self.is_valid_mode(mode):
-            self.mode = mode
+            if self.modes[mode].has_key('toggle'):
+                self.toggle_mode()
+            else:
+                self.mode = mode
         else:
             self.modes[mode] = {'Address': mode}
             raise IndexError("That mode does not exist.")
