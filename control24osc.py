@@ -88,46 +88,28 @@ class C24Track(_ReaTrack):
             self.reascribstrip = self.c24scribstrip
 
 
-
 class C24desk(_ReaDesk):
     """Class to represent the desk, state and
     instances to help conversions and behaviour"""
     real_channels = 24
-    virtual_channels = 8
+    virtual_channels = 3
     busvus = 4
     deskmodes = {
-        'ShowValues': {
-            'address': 'ShowValues',
+        'Values': {
+            'address': '/track/@/c24scribstrip/volume',
 
         },
-        'ShowGroup': {
-            'address': 'ShowGroup'
+        'Group': {
+            'toggle': True
         },
-        'ShowChannelNames': {
-            'address': 'ShowChannelNames',
+        'Names': {
+            'address': '/track/@/c24scribstrip/name',
             'default': True
         },
-        'ShowInfo': {
-            'address': 'ShowInfo'
+        'Info': {
+            'address': '/track/@/c24scribstrip/pan'
         }
     }
-
-    def set_mode_to_tracks(self, mode):
-        """set the global desk mode"""
-        self.log.debug('Desk mode set: %s', mode)
-        self.channel_bar_display(mode)
-        if self.real_channels > 0:
-            # toggle proxy means the first one toggled will set a mode
-            # follows that the rest should try to set the same mode not their next toggle
-            target_mode = self.tracks[0].c24scribstrip.mode_callback(mode)
-            self.log.debug('Track 0 mode set: %s', target_mode)
-            for track in self.tracks[1:self.real_channels]:
-                attr = getattr(track, 'reascribstrip', None)
-                if attr:
-                    track.c24scribstrip.mode_callback(target_mode)
-                    #track.reascribstrip.restore_desk_display()
-            # experimental echo the current target mode to the desk display
-            self.channel_bar_display(target_mode)
 
     def __init__(self, parent):
         """ Build a base desk object with the _Readesk class
@@ -138,6 +120,7 @@ class C24desk(_ReaDesk):
         self.reabuttonled = ReaButtonLed(self, None)
         self.reaclock = ReaClock(self)
 
+        self.modemgr = ModeManager(C24desk.deskmodes)
         # Set up specifics for this device
         self.real_channels = C24desk.real_channels
         self.virtual_channels = C24desk.virtual_channels
@@ -146,36 +129,14 @@ class C24desk(_ReaDesk):
 
         self.instantiate_tracks(C24Track)
 
-        self.strip0, self.strip1 = self.tracks[29].c24scribstrip, self.tracks[30].c24scribstrip
-        self.strip0.modemgr.add_mode('name1', {'textvalue': 'Nam1'})
-        self.strip0.modemgr.set_mode('name1')
-        self.strip1.modemgr.add_mode('name2', {'textvalue': 'Nam2'})
-        self.strip1.modemgr.set_mode('name2')
-        # Provide a mapping object at desk level (no track context
-        # for incoming buttons mapped to the jpot class
-        self.reavpot = self.tracks[28].reavpot
-        self.modemgr = ModeManager(C24desk.deskmodes, self, self.set_mode_to_tracks)
-
-    def channel_bar_display(self, msg):
-        msgs = ['____','____']
-        if '_' in msg:
-            msgs = msg.split('_')
-        elif len(msg) > 4:
-            msgs[1] = msg[4:]
-            msgs[0] = msg[:5]
-        else:
-            msgs[0] = msg
-        self.strip0.c_d(['name1'], stuff=[msgs[0]])
-        self.strip1.c_d(['name2'], stuff=[msgs[1]])
-
 
 class C24scribstrip(_ReaScribStrip):
     """Class to hold and convert scribblestrip value representations
     this version specific to the Control24 """
 
     digits = 4
-    defaultaddress = 'ShowChannelNames'
-    bank = 1
+    defaultaddress = '/track/@/number'
+    bank = 0
 
     def __init__(self, track):
         super(C24scribstrip, self).__init__(
