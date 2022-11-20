@@ -105,7 +105,7 @@ class ProCdesk(_ReaDesk):
         self.reabuttonled = ReaButtonLed(self, None)
         self.clock = ProCclock(self)
 
-        self.modemgr = ModeManager(ProCdesk.deskmodes)
+        self.modemgr = ModeManager(ProCdesk.deskmodes, self)
         # Set up specifics for this device
         self.real_channels = ProCdesk.real_channels
         self.virtual_channels = ProCdesk.virtual_channels

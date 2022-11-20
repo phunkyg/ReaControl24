@@ -62,23 +62,25 @@ REPEAT t/button/command/Transport/LoopPlay
 #GOTO_MARKER b/button/command/@
 GOTO_REGION b/button/command/@
 
-SCRUB r/scrub
-PLAY_RATE r/playrate/rotary
+SCRUB r/jpot/scrub r/jpot/shuttle
+PLAY_RATE r/playrate
 
-TRACK_NAME s/track/@/c24scribstrip/name
+TRACK_NAME s/track/@/c24scribstrip/ShowChannelNames
+TRACK_NUMBER s/track/@/c24scribstrip/TRACK_NUMBER
 TRACK_MUTE t/button/track/@/Mute
 TRACK_SOLO t/button/track/@/Solo
 TRACK_REC_ARM t/button/track/@/RecArm
 
 TRACK_SELECT t/button/track/@/ChannelSelect
-TRACK_VOLUME n/track/@/reafader s/track/@/c24scribstrip/volume
+TRACK_VOLUME n/track/@/reafader s/track/@/c24scribstrip/ShowValues
 TRACK_PAN n/track/@/reavpot s/track/@/c24scribstrip/pan
+TRACK_PAN2 s/track/@/c24scribstrip/pan2
 TRACK_VU_L n/track/@/reavumeter/0
 TRACK_VU_R n/track/@/reavumeter/1
 MASTER_VU_L n/track/25/reavumeter/0
 MASTER_VU_R n/track/25/reavumeter/1
 
-TRACK_SEND_VOLUME s/track/@/c24scribstrip/send/volume
+TRACK_SEND_VOLUME s/track/@/c24scribstrip/sendvolume
 
 TRACK_AUTO_TRIM t/track/@/reaautomode/trim
 TRACK_AUTO_READ t/track/@/reaautomode/read
@@ -89,12 +91,27 @@ TRACK_AUTO_WRITE t/track/@/reaautomode/write
 DEVICE_PREV_TRACK_BANK t/button/command/EditMode+Function+Banks/Left
 DEVICE_NEXT_TRACK_BANK t/button/command/EditMode+Function+Banks/Right
 
-TRACK_PAN_MODE s/track/@/c24scribstrip/pan_mode
-TRACK_AUTO s/track/@/c24scribstrip/auto
+TRACK_PAN_MODE s/track/@/c24scribstrip/PAN_MODE
+TRACK_AUTO s/track/@/c24scribstrip/AUTO
 
-TRACK_SEND_NAME s/track/@/c24scribstrip/send_name
-TRACK_SEND_VOLUME s/track/@/c24scribstrip/name
-TRACK_SEND_PAN s/track/@/c24scribstrip/send_pan
-TRACK_RECV_NAME s/track/@/c24scribstrip/recv_name
-TRACK_RECV_VOLUME s/track/@/c24scribstrip/rec_name
-TRACK_RECV_PAN s/track/@/c24scribstrip/recv_pan
+TRACK_SEND_NAME s/track/@/c24scribstrip/SEND_NAME
+TRACK_SEND_VOLUME s/track/@/c24scribstrip/SEND_VOLUME
+TRACK_SEND_PAN s/track/@/c24scribstrip/SEND_PAN
+TRACK_RECV_NAME s/track/@/c24scribstrip/RECV_NAME
+TRACK_RECV_VOLUME s/track/@/c24scribstrip/RECV_VOLUME
+TRACK_RECV_PAN s/track/@/c24scribstrip/RECV_PAN
+
+#MASTER_SEND_NAME s/track/29/send/@/SEND_NAME
+#MASTER_SEND_VOLUME s/track/29/send/@/volume/str
+#MASTER_SEND_PAN s/track/29/send/@/pan/str
+
+FX_PRESET s/track/@/c24scribstrip/FX@_PRESET
+FX_NAME s/track/@/c24scribstrip/FX@_NAME
+FX_NUMBER s/track/@/c24scribstrip/FX@_NUMBER
+
+FX_PARAM_NAME s/track/@/c24scribstrip/FX@_PARAM_NAME
+FX_WETDRY s/track/@/c24scribstrip/FX@_WETDRY
+FX_PARAM_VALUE s/track/@/c24scribstrip/FX@_PARAM_VALUE
+
+FX_EQ_PRESET s/track/@/c24scribstrip/FX@_EQ_PRESET
+

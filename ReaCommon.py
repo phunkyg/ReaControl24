@@ -10,6 +10,7 @@ import sys
 import signal
 import re
 import threading
+import configparser
 from ctypes import c_ubyte
 from multiprocessing.connection import Client
 
@@ -18,6 +19,8 @@ import OSC
 
 if sys.platform.startswith('win'):
     import _winreg as wr  # pylint: disable=E0401
+
+DAEMON_CONFS = ['conf/default/daemon_default.conf', 'conf/daemon.conf']
 
 '''
     This file is part of ReaControl24. Control Surface Middleware.
@@ -37,13 +40,16 @@ if sys.platform.startswith('win'):
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
+
+'''
+
 DEFAULTS = {
     'ip': '0.0.0.0',
     'daemon': 9124,
     'oscport': 9124,
     'oscDaw': 9125,
     'auth': 'be_in-control',
-    'loglevel': 'INFO',   # 'TRACE' here will activate deep debugging
+    'loglevel': 'INFO',  # 'TRACE' here will activate deep debugging
     'interface': 'en0',
     'logdir': './logs',
     'logformat': '%(asctime)s\t%(name)s\t%(levelname)s\t' +
@@ -51,6 +57,9 @@ DEFAULTS = {
     'timing_scribble_restore': 1,
     'ignore_networks': ['Npcap Loopback Adapter', 'Bluetooth Network Connection', 'bridge0']
 }
+
+'''
+CONFIG = None
 
 COMMANDS = {
     'ack': 0xA0,
@@ -67,7 +76,6 @@ TIMING_OSC_CLIENT_RESTART = 1
 TIMING_OSC_CLIENT_LOOP = 4
 TIMING_SCRIBBLESTRIP_RESTORE = 4
 TIMING_FADER_ECHO = 0.1
-
 
 CHANNELS = 24
 FADER_RANGE = 2 ** 10
@@ -93,12 +101,16 @@ def trace(logger, msg, *args, **kwargs):
         logger.log(5, msg, *args, **kwargs)
 
 
-def start_logging(name, logdir, debug=False, tostdout=True):
+def start_logging(name, opts, tostdout=True):
     """Configure logging for the program
     :rtype:
     """
     # Set logging
-    logformat = DEFAULTS.get('logformat')
+    logdir = opts.logdir
+    loglevel = opts.loglevel
+    debug = opts.debug
+    logformat = opts.logformat
+    is_trace = loglevel == "TRACE"
     loghead = ''.join(c for c in logformat if c not in '$()%')
     # Get the root logger and set up outputs for stderr
     # and a log file in the CWD
@@ -118,11 +130,11 @@ def start_logging(name, logdir, debug=False, tostdout=True):
     logging.addLevelName(5, "TRACE")
     logging.trace = trace
     logging.Logger.trace = trace
-    is_trace = DEFAULTS.get('loglevel') == "TRACE"
+
     if debug and not is_trace:
         root_logger.setLevel(logging.DEBUG)
     else:
-        root_logger.setLevel(DEFAULTS.get('loglevel'))
+        root_logger.setLevel(loglevel)
     log_f = logging.FileHandler('{}/{}.log.{:%d_%m.%H_%M}.csv'.format(
         logdir,
         name,
@@ -139,30 +151,6 @@ def start_logging(name, logdir, debug=False, tostdout=True):
         log_s = logging.StreamHandler()
         root_logger.addHandler(log_s)
     return root_logger
-
-
-def opts_common(desc):
-    """Set up an opts object with options we use everywhere"""
-    fulldesc = desc + """
-        part of ReaControl24  Copyright (c)2018 Phase Walker 
-        This program comes with ABSOLUTELY NO WARRANTY;
-        This is free software, and you are welcome to redistribute it
-        under certain conditions; see COPYING.md for details."""
-    oprs = optparse.OptionParser(description=fulldesc)
-    oprs.add_option(
-        "-d",
-        "--debug",
-        dest="debug",
-        action="store_true",
-        help="logger should use debug level. default = off / INFO level")
-    logdir = DEFAULTS.get('logdir')
-    oprs.add_option(
-        "-o",
-        "--logdir",
-        dest="logdir",
-        help="logger should create dir and files here. default = %s" % logdir)
-    oprs.set_defaults(debug=False, logdir=logdir)
-    return oprs
 
 
 def findintree(obj, key):
@@ -184,9 +172,21 @@ def hexl(inp):
     return ' '.join([shex[i:i + 2] for i in range(0, len(shex), 2)])
 
 
+def get_cwd():
+    dirname = os.path.dirname(os.path.realpath(__file__))
+    return short_user_path(dirname)
+
+
+def short_user_path(p):
+    usr = os.path.expanduser('~')
+    return p.replace(usr, '~')
+
+
 class ReaQuit(Exception):
     """Custom exception to use when there is an internal problem"""
     pass
+
+
 # END classes
 
 class ReaException(Exception):
@@ -197,6 +197,8 @@ class ReaException(Exception):
 class NetworkHelper(object):
     """class to contain network related helpful methods
     and such to be re-used where needed"""
+
+    ignorelist = ['Npcap Loopback Adapter', 'Bluetooth Network Connection', 'bridge0']
 
     def __init__(self):
         self.networks = NetworkHelper.list_networks()
@@ -262,7 +264,7 @@ class NetworkHelper(object):
     def list_networks_win(networks):
         """Windows shim for list_networks. Also go to the registry to
         get a friendly name"""
-        ignorelist = DEFAULTS.get('ignore_networks')
+
         reg = wr.ConnectRegistry(None, wr.HKEY_LOCAL_MACHINE)
         reg_key = wr.OpenKey(
             reg,
@@ -278,7 +280,7 @@ class NetworkHelper(object):
                 if net_name:
                     val['name'] = net_name
                     # ignore certain names
-                    if net_name in ignorelist:
+                    if net_name in NetworkHelper.ignorelist:
                         val['ignore'] = True
             except WindowsError:  # pylint: disable=E0602
                 pass
@@ -289,7 +291,7 @@ class NetworkHelper(object):
     @staticmethod
     def list_networks():
         """Gather networks info via netifaces library"""
-        ignorelist = DEFAULTS.get('ignore_networks')
+
         default_not_found = True
         names = [a.encode('ascii', 'ignore') for a in netifaces.interfaces()]
         results = {}
@@ -298,13 +300,14 @@ class NetworkHelper(object):
                 'pcapname': interface,
                 'mac': NetworkHelper.get_mac_address(interface)
             }
-            if interface in ignorelist:
+            if interface in NetworkHelper.ignorelist:
                 inner['ignore'] = True
             # ip
             ips = NetworkHelper.get_ip_address(interface)
             if ips:
                 inner['ip'] = ips
-                if default_not_found and (not inner.has_key('ignore')) and any([ip.has_key('addr') and not ip.has_key('peer') for ip in ips]):
+                if default_not_found and (not inner.has_key('ignore')) and any(
+                        [ip.has_key('addr') and not ip.has_key('peer') for ip in ips]):
                     default_not_found = False
                     inner['default'] = True
             results[interface] = inner
@@ -330,7 +333,7 @@ class NetworkHelper(object):
     @staticmethod
     def is_valid_ipstr(ipstr):
         """check if a string conforms to the expected ipv4 and port format"""
-        pat = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.)" +\
+        pat = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.)" + \
               "{3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):[0-9]+$"
         return bool(re.findall(pat, ipstr))
 
@@ -341,7 +344,7 @@ class ModeManager(object):
     functionality. Instantiate one into another class to provide
     that functionality"""
 
-    def __init__(self, modesdict):
+    def __init__(self, modesdict, parent, callback=None):
         """Build a mode manager from a dict containing the possible modes
         each with a value of a child dict containing any required data items.
         If the data contains a key 'default' then that will set the initial mode
@@ -352,6 +355,8 @@ class ModeManager(object):
             raise ValueError(
                 "A dict of modes, with subdict of data for each with address was expected."
             )
+        self.parent = parent
+        self.callback = callback
         self.modes = dict(modesdict)
         self.modeslist = list(modesdict.keys())
         self.numberofmodes = len(self.modeslist)
@@ -367,9 +372,23 @@ class ModeManager(object):
             if value.has_key('address'):
                 value['msg'] = OSC.OSCMessage(value['address'])
             if value.get('default'):
-                self.mode = key
+                self.actually_set_mode(key)
         if self.mode is None:
-            self.mode = first
+            self.actually_set_mode(first)
+
+    def d_c(self, msg):
+        """indirectly set a mode based on an incoming message"""
+        if msg.get('Value') == 1.0:
+            adr = msg.get('addresses')
+            if adr:
+                button = adr[-1]
+                self.set_mode(button)
+
+    def actually_set_mode(self, mode):
+        self.mode = mode
+        if self.callback is None:
+            return
+        self.callback(mode)
 
     def set_mode(self, mode):
         """directly set the mode to the key requested"""
@@ -377,10 +396,11 @@ class ModeManager(object):
             if self.modes[mode].has_key('toggle'):
                 self.toggle_mode()
             else:
-                self.mode = mode
+                self.actually_set_mode(mode)
         else:
-            self.modes[mode] = {'Address': mode}
-            raise IndexError("That mode does not exist.")
+            self.modes[mode] = {'textvalue': '*DNE'}
+            #raise IndexError("That mode does not exist.")
+        return self.mode
 
     def is_valid_mode(self, mode):
         """Boolean test to ensure mode is currently in the
@@ -392,9 +412,13 @@ class ModeManager(object):
         dict passed"""
         thiskeyindex = self.modeslist.index(self.mode)
         if thiskeyindex < self.numberofmodes - 1:
-            self.mode = self.modeslist[thiskeyindex + 1]
+            self.actually_set_mode(self.modeslist[thiskeyindex + 1])
         else:
-            self.mode = self.modeslist[0]
+            self.actually_set_mode(self.modeslist[0])
+        # Dont toggle to the actual toggle mode entry
+        # just toggle again if we find it
+        if self.get('toggle'):
+            self.toggle_mode()
 
     def get_data(self):
         """return the whole data dict for the current mode"""
@@ -403,6 +427,10 @@ class ModeManager(object):
     def get(self, key):
         """ pass through method to current mode data dict get"""
         return self.modes.get(self.mode).get(key)
+
+    def set(self, mode, key, value):
+        """ pass through method to current mode data dict get"""
+        self.modes.get(mode)[key] = value
 
     def get_msg(self):
         """return only the OSC message for the current mode"""
@@ -413,6 +441,14 @@ class ModeManager(object):
             return msg
         else:
             return None
+
+    def add_mode(self, key, obj):
+        if type(obj) is dict:
+            self.modes[key] = obj
+            self.modeslist.append(key)
+            self.numberofmodes = self.numberofmodes + 1
+        else:
+            raise TypeError("Can't add Mode. Value must be a dict.")
 
 
 '''
@@ -453,8 +489,6 @@ class ReaBase(object):
         return {ReaBase.tenbits(num): num * fader_step for num in range(0, fader_range)}
 
 
-
-
 class ReaNav(ReaBase):
     """Class to manage the desk navigation section
     and cursor keys with 3 modes going to different
@@ -481,7 +515,7 @@ class ReaNav(ReaBase):
         self.log = desk.log
         self.desk = desk
         # Global / full desk level modes and modifiers
-        self.modemgr = ModeManager(self.navmodes)
+        self.modemgr = ModeManager(self.navmodes, self)
         # TODO look how we can deal with arrival of a desk
         # and the need to initialise things like the NAV
         # button controlled by this class
@@ -650,7 +684,7 @@ class ReaClock(ReaBase):
         self.text = {}
         self.op_list = None
         self.byt_list = None
-        self.modemgr = ModeManager(self.clockmodes)
+        self.modemgr = ModeManager(self.clockmodes, self)
         self.cmdbytes = self.initbytes(self.clockbytes)
         self.ledbytes = self.initbytes(self.ledbytes)
         self._set_things()
@@ -744,7 +778,7 @@ class ReaButtonLed(ReaBase):
         self.states = {}
         self.mapping_osc = {}
         ReaButtonLed.walk(desk.mapping_tree.get(0x90).get('Children'),
-                     '/button', [0x90, 0x00, 0x00], 1, None, self.mapping_osc)
+                          '/button', [0x90, 0x00, 0x00], 1, None, self.mapping_osc)
 
     def c_d(self, addrlist, stuff):
         """computer to desk handler"""
@@ -920,15 +954,7 @@ class _ReaDesk(ReaBase):
         # clock
         self.clock = None
 
-    def set_mode(self, mode):
-        """set the global desk mode"""
-        self.log.debug('Desk mode set: %s', mode)
-        self.modemgr.set_mode(mode)
-        for track in self.tracks:
-            track.modemgr.set_mode(mode)
-            attr = getattr(track, 'reascribstrip', None)
-            if attr:
-                track.reascribstrip.restore_desk_display()
+
 
     def get_track(self, track):
         """Safely access both the main tracks and any virtual
@@ -968,7 +994,7 @@ class _ReaTrack(ReaBase):
         self.log = desk.log
         self.track_number = track_number
         self.osctrack_number = track_number + 1
-        self.modemgr = ModeManager(self.desk.modemgr.modes)
+        #self.modemgr = ModeManager(self.desk.modemgr.modes, self, self.mode_callback)
 
         # Only channel strip setup common to all devices goes here
         if self.track_number < self.desk.real_channels:
@@ -1000,13 +1026,16 @@ class _ReaScribStrip(ReaBase):
     # 0x00, 0x00, 0x00, 0x00 = 4 'ascii' chars to display
     # 0xf7             = terminator
 
-    def __init__(self, track, digits, bank, defaultaddress='/track/@/number'):
+    def mode_callback(self, mode):
+        """implement this if you want the callback to do something like update a scribble strip"""
+        pass
+
+    def __init__(self, track, digits, bank, defaultaddress='TrackNumber'):
         self.track = track
         self.log = track.desk.log
         self.restore_timer = None
         self.digits = digits
         self.bank = bank
-        self.mode = track.modemgr.get_data()
         defaulttext = '{num:02d}'.format(num=self.track.osctrack_number)
         self.dtext = defaulttext
 
@@ -1022,28 +1051,32 @@ class _ReaScribStrip(ReaBase):
             self.cmdbytes[ind] = byt
 
         # Initialise the text dictionary with a default element
-        # It should get overwritten once this OSC address is
+        # It should get overwritten once this address is
         # populated by the DAW.
-        addrdef = defaultaddress.replace('@', str(self.track.osctrack_number))
-        self.text = {addrdef: defaulttext}
+        self.modemgr = ModeManager({
+                defaultaddress: {'textvalue': defaulttext},
+                'ShowInfo': {'toggle': True}
+            }, self, self.reverse_callback)
+        self.restoremode = self.modemgr.mode
 
         # Set up timer details for temporary values display returning
         # to the current mode display after a few seconds
-        self.timing_restore = float(DEFAULTS.get('timing_scribble_restore'))
+        # TODO work out how to get this default here
+        self.timing_restore = 1 #float(CONFIG.get('config','timing_scribble_restore'))
         self.make_timer()
 
     def __str__(self):
         return 'Channel:{}, Bank:{}, Text:{}, CmdBytes:{}'.format(
             self.track,
             self.bank,
-            self.text,
+            self.modemgr.modes,
             binascii.hexlify(self.cmdbytes)
         )
 
     def make_timer(self):
         """ Set up the timer thread object """
         self.restore_timer = threading.Timer(
-            self.timing_restore, self.restore_desk_display)
+            self.timing_restore, self.restore_prior_display)
 
     def set_current_display(self):
         """ Given the current state do the text transform
@@ -1051,23 +1084,33 @@ class _ReaScribStrip(ReaBase):
         self.transform_text()
         self.cmdbytes[6:self.digits + 6] = [ord(thischar) for thischar in self.dtext]
         trace(self.log, 'ScribbleStrip mode state: %s = %s',
-              self.mode, self.dtext)
+              self.modemgr.mode, self.dtext)
         # Trigger the update to be sent from the daemon to the desk
         self.track.desk.daemon_client_send(self.cmdbytes)
 
-    def restore_desk_display(self):
+    def restore_prior_display(self):
         """ To be called in a delayed fashion
         to restore channel bar display to desk default"""
         # TODO currently the mode is owned by the track class
         # but it mightbe more appropriate to move it into this class
         # for multiple banks etc.
-        self.mode = self.track.desk.modemgr.get_data().get('address')
+        #deskmode = self.track.desk.modemgr.mode
+        self.modemgr.set_mode(self.restoremode)
         self.set_current_display()
+
+    def mode_callback(self, mode):
+        """ Called when a mode is set by a parent"""
+        self.modemgr.set_mode(mode)
+        self.set_current_display()
+        return self.modemgr.mode
+
+    def reverse_callback(self, mode):
+        self.log.debug('REV %s' % str(mode))
 
     def transform_text(self):
         """ Change the raw text sent from the daw at the
          current mode (address) into a suitable string """
-        dtext = self.text.get(self.mode)
+        dtext = self.modemgr.get('textvalue')
         if dtext is not None:
             # The desk has neat single characters with a dot and small numeral,
             # Which is nice because 1 char is saved
@@ -1082,20 +1125,22 @@ class _ReaScribStrip(ReaBase):
             self.dtext = fmtstring.format(txt=dtext[:self.digits])
         else:
             # send all spaces to blank it out
-            self.dtext = ' ' * self.digits
+            # temp changed to underscore to look for this behaviour
+            self.dtext = '_' * self.digits
 
     def c_d(self, addrlist, stuff):
         """Update from DAW text"""
-        # quick hack to turn numbers in track address back to @
-        # so it matches the desk modes address.
-        # TODO - messy!
-        for addr in addrlist:
-            if unicode(addr).isnumeric():
-                addr = '@'
-        address = '/'.join(addrlist)
+        # originally we stored whole address from text receipt but now trying last portion only
+        # as more useful to show actually on the desk
+        # address = '/'.join(addrlist)
+        address = addrlist[-1]
         textvalue = stuff[0]
-        self.text[address] = textvalue
-        if address == self.mode:
+        if self.modemgr.is_valid_mode(address):
+            self.modemgr.set(address, 'textvalue', textvalue)
+        else:
+            # auto add new mode on request should prob be switchable
+            self.modemgr.add_mode(address, {'textvalue': textvalue})
+        if address == self.modemgr.mode:
             self.set_current_display()
         else:
             # We got something that wasn't the current mode
@@ -1103,7 +1148,8 @@ class _ReaScribStrip(ReaBase):
             # and display that temporarily
             # What comes here is therefore controlled
             # by the OSC mapping
-            self.mode = address
+            self.restoremode = self.modemgr.mode
+            self.modemgr.set_mode(address)
             self.set_current_display()
             if self.restore_timer.isAlive:
                 self.restore_timer.cancel()
@@ -1132,7 +1178,7 @@ class ReaJpot(ReaBase):
         self.mode = None
         self.modes = {
             'Scrub': {'address': '/jpot/scrub', 'default': True},
-            'Shuttle': {'address': '/jpot/playrate/rotary'}
+            'Shuttle': {'address': '/jpot/scrub'}
         }
         for key, value in self.modes.iteritems():
             value['msg'] = OSC.OSCMessage(value['address'])
@@ -1162,8 +1208,9 @@ class ReaJpot(ReaBase):
             button = addrs[-1]
             if self.modes.has_key(button):
                 self.mode = button
+                self.log.info('ReaJpot set mode %s', button)
             else:
-                self.log.warn('C24jpot no mode for button %s', button)
+                self.log.warn('ReaJpot no mode for button %s', button)
 
     def _update_from_move(self, parsedcmd):
         """Update from desk command byte list"""
@@ -1190,11 +1237,16 @@ class ReaJpot(ReaBase):
 
             if self.mode == 'Scrub':
                 msg.append(self.scrubout)
+                self.track.desk.osc_client_send(msg)
             else:
-                msg.append(self.out)
+                # this is a nice float output based on velocity etc. but is no use to reaper
+                # msg.append(self.out)
+                msg.append(self.scrubout)
+                self.track.desk.osc_client_send(msg)
+                self.track.desk.osc_client_send(msg)
+                self.track.desk.osc_client_send(msg)
 
             self.log.debug('%s', self)
-            self.track.desk.osc_client_send(msg)
 
 
 class _ReaVpot(ReaBase):
@@ -1575,10 +1627,9 @@ class _ReaOscsession(object):
             lkp = lkp.get(this_byte)
             if not lkp:
                 self.log.warn(
-                    'Level %d byte not found in MAPPING_TREE: %02x. New mapping needed for sequence %s',
+                    'L%d byte not in map: %02x.',
                     level,
-                    this_byte,
-                    cmdbytes
+                    this_byte
                 )
                 return None
             # Copy this level's dict entries but not the children subdict. i.e. flatten/accumulate
@@ -1625,8 +1676,8 @@ class _ReaOscsession(object):
             # Find the index of the 'track' address token
             # insert the track index number after it
             ind = next(ind for ind, adr in enumerate(parsedcmd["addresses"]) if adr == 'track')
-            parsedcmd["addresses"].insert(ind+1, '/')
-            parsedcmd["addresses"].insert(ind+2, '{}'.format(tracknumber + 1))
+            parsedcmd["addresses"].insert(ind + 1, '/')
+            parsedcmd["addresses"].insert(ind + 2, '{}'.format(tracknumber + 1))
         if 'DirectionByte' in parsedcmd:
             direction_byte = ord(cmdbytes[parsedcmd['DirectionByte']])
             parsedcmd["Direction"] = int(direction_byte) - 64
@@ -1732,7 +1783,7 @@ class _ReaOscsession(object):
                 # track based addresses must have the
                 # next address token be the @ parameter
                 # for the track number
-                track_number = int(addrlist[track_addr_ind+1]) - 1
+                track_number = int(addrlist[track_addr_ind + 1]) - 1
                 track = self.desk.get_track(track_number)
                 if track is None:
                     raise ReaException('No track object {}'.format(track_number))
@@ -1744,7 +1795,7 @@ class _ReaOscsession(object):
                     # otherwise the address token following the track number
                     # references the attribute within the track
                     # so by convention the class name in lowercase
-                    attribute_name = addrlist[track_addr_ind+2]
+                    attribute_name = addrlist[track_addr_ind + 2]
 
                 cmdinst = getattr(track, attribute_name, None)
                 if cmdinst is None:
@@ -1782,7 +1833,7 @@ class _ReaOscsession(object):
                 while self.daemon_client is None:
                     try:
                         self.daemon_client = Client(
-                            self.server, authkey=DEFAULTS.get('auth'))
+                            self.server, authkey=CONFIG.get('config','auth'))
                     except Exception as exc:
                         # Connection refused
                         if exc[0] == 61:
@@ -1918,7 +1969,7 @@ class _ReaOscsession(object):
     # session housekeeping methods
     def __init__(self, opts, networks, pipe=None):
         """Contructor to build the client session object"""
-        self.log = start_logging("ReaOscsession", opts.logdir, opts.debug)
+        self.log = start_logging("ReaOscsession", opts)
         try:
             self.standalone = pipe is None
             if self.standalone:
@@ -1976,7 +2027,6 @@ class _ReaOscsession(object):
             self.log.error('Error caught by Outer error trap for OSC client session threads:', exc_info=True)
             raise
 
-
     def __str__(self):
         """pretty print session state if requested"""
         return 'osc session: daemon_client_is_connected:{}'.format(
@@ -2012,62 +2062,5 @@ def signal_handler(sig, stackframe):
 # main program if run in standalone mode
 def main(sessionclass):
     """Main function declares options and initialisation routine for OSC client."""
-    global SESSION
-
-    # Find networks on this machine, to determine good defaults
-    # and help verify options
-    networks = NetworkHelper()
-
-    default_ip = networks.get_default()[1]
-
-    # program options
-    oprs = opts_common("ReaControl OSC client")
-    default_daemon = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('daemon'))
-    oprs.add_option(
-        "-s",
-        "--server",
-        dest="server",
-        help="connect to daemon at given host:port. default %s" % default_daemon)
-    default_osc_client = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscport'))
-    oprs.add_option(
-        "-l",
-        "--listen",
-        dest="listen",
-        help="accept OSC client from DAW at host:port. default %s" % default_osc_client)
-    default_daw = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscDaw'))
-    oprs.add_option(
-        "-c",
-        "--connect",
-        dest="connect",
-        help="Connect to DAW OSC server at host:port. default %s" % default_daw)
-
-    oprs.set_defaults(listen=default_osc_client,
-                      server=default_daemon, connect=default_daw)
-
-    # Parse and verify options
-    # TODO move to argparse and use that to verify
-    (opts, _) = oprs.parse_args()
-    if not networks.verify_ip(opts.listen.split(':')[0]):
-        raise optparse.OptionError('No network has the IP address specified.', 'listen')
-
-    # Set up Interrupt signal handler so process can close cleanly
-    # if an external signal is received
-    if sys.platform.startswith('win'):
-        # TODO test these in Winders
-        signals = [signal.SIGTERM, signal.SIGHUP, signal.SIGINT, signal.SIGABRT]
-    else:
-        # TODO check other un*x variants
-        # OSC (Mojave) responding to these 2
-        signals = [signal.SIGTERM, signal.SIGHUP]
-
-    for sig in signals:
-        signal.signal(sig, signal_handler)
-
-    # Build the session
-    if SESSION is None:
-        # start logging if main
-        SESSION = sessionclass(opts, networks)
-
-    # Main Loop once session initiated
-    while True:
-        time.sleep(TIMING_MAIN_LOOP)
+    print 'Sorry support for launching client from command line is dropped'
+    exit()

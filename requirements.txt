@@ -1,3 +1,4 @@
 netifaces
 pyOSC
+configparser
 pypcap

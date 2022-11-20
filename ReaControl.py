@@ -9,6 +9,10 @@ import sys
 import threading
 import time
 import logging
+if sys.version_info[0] == 2:
+    import ConfigParser as configparser
+else:
+    import configparser
 from ctypes import (POINTER, BigEndianStructure, Structure, Union,
                     addressof, c_char, c_ubyte, c_uint16,
                     c_uint32, cast, create_string_buffer, string_at)
@@ -16,11 +20,11 @@ from ctypes import (POINTER, BigEndianStructure, Structure, Union,
 #from multiprocessing.connection import AuthenticationError, Listener
 from multiprocessing import Process, Pipe
 from optparse import OptionError
-
+import optparse
 import pcap
 
-from ReaCommon import (DEFAULTS, COMMANDS, NetworkHelper, hexl,
-                       opts_common, tick, fix_ownership, ReaQuit,
+from ReaCommon import (COMMANDS, DAEMON_CONFS, NetworkHelper,
+                       tick, fix_ownership, ReaQuit, hexl,
                        start_logging, trace)
 
 #--MULTI can we import the client scripts?
@@ -451,7 +455,7 @@ class NetworkHandler(object):
 
     def __init__(self, opts, networks):
         """Constructor to build the network handler object"""
-        log = start_logging(__name__, opts.logdir, opts.debug)
+        log = start_logging(__name__, opts)
         log.info('Network Handler Started')
         log.debug('Options %s', str(opts))
         #--MULTI add a Sessions dict
@@ -764,27 +768,69 @@ def signal_dumpo(sig, stackframe):
     log = logging.getLogger(__name__)
     log.debug(str(stackframe))
 
+def opts_common(desc):
+    """Set up an opts object with options we use everywhere"""
+    global CONFIG
+    fulldesc = desc + """
+        part of ReaControl24  Copyright (c)2018 Phase Walker 
+        This program comes with ABSOLUTELY NO WARRANTY;
+        This is free software, and you are welcome to redistribute it
+        under certain conditions; see COPYING.md for details."""
+    oprs = optparse.OptionParser(description=fulldesc)
+    oprs.add_option(
+        "-d",
+        "--debug",
+        dest="debug",
+        action="store_true",
+        help="logger should use debug level. default = off / INFO level")
+    logdir = CONFIG.get('paths','logdir')
+    oprs.add_option(
+        "-o",
+        "--logdir",
+        dest="logdir",
+        help="logger should create dir and files here. default = %s" % logdir)
+    oprs.set_defaults(debug=False, logdir=logdir)
+    return oprs
+
 # START main program
 def main():
     """Main function declares options and initialisation routine for daemon."""
     #--MULTI - globalise NETHANDLER
-    global NETHANDLER
+    global NETHANDLER, CONFIG
 
-    # Find networks on this machine, to determine good defaults
+    # Load the daemon conf configuration object
+    CONFIG = configparser.RawConfigParser()
+    CONFIG.read(DAEMON_CONFS)
+
+    # Find networks on this machine, to det1ermine good defaults
     # and help verify options
     networks = NetworkHelper()
-
     # See if this system has simple defaults we can use
     default_iface, default_ip = networks.get_default()
 
+    # For now we will patch it into the defaults
+    config_iface = CONFIG.get('daemon','network')
+    config_listen = networks.ipstr_from_tuple(
+        CONFIG.get('daemon','listen'),
+        CONFIG.get('daemon','listen_port')
+    )
+    config_connect = networks.ipstr_from_tuple(
+        CONFIG.get('daemon','connect'),
+        CONFIG.get('daemon','connect_port')
+    )
+
     # program options
     oprs = opts_common("ReaControl Communication Daemon")
+    network_help = "Ethernet interface to the same network as the Desk. Configured = {} BestGuess = {}".format(
+        config_iface,
+        default_iface
+    )
     oprs.add_option(
         "-n",
         "--network",
         dest="network",
-        help="Ethernet interface to the same network as the Desk. Default = %s" %
-        default_iface)
+        help=network_help
+    )
     # default_listener = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('daemon'))
     # oprs.add_option(
     #     "-l",
@@ -792,27 +838,40 @@ def main():
     #     dest="listen",
     #     help="listen on given host:port. Default = %s" % default_listener)
     # TODO did this to get it going but 9124 port will also need an auto-increment or alternative range
-    default_osc_client = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscport'))
+    listen_help = "accept OSC client from DAW at host:port. Configured {}".format(
+        config_listen
+    )
     oprs.add_option(
         "-l",
         "--listen",
         dest="listen",
-        help="accept OSC client from DAW at host:port. default %s" % default_osc_client)
-    default_daw = networks.ipstr_from_tuple(default_ip, DEFAULTS.get('oscDaw'))
+        help=listen_help
+        )
+
+    connect_help = "Connect to DAW OSC server at host:baseport. Baseport will increment for subsequent devices. Configured {}"\
+        .format(config_connect)
     oprs.add_option(
         "-c",
         "--connect",
         dest="connect",
-        help="Connect to DAW OSC server at host:baseport. Baseport will increment for subsequent devices. default %s" % default_daw)
-    oprs.set_defaults(network=default_iface)
+        help=connect_help
+    )
+    oprs.set_defaults(network=config_iface)
     #oprs.set_defaults(listen=default_listener)
-    oprs.set_defaults(listen=default_osc_client)
-    oprs.set_defaults(connect=default_daw)
+    oprs.set_defaults(listen=config_listen)
+    oprs.set_defaults(connect=config_connect)
 
     # Parse and verify options
-    # TODO move to argparse and use that to verify
     (opts, __) = oprs.parse_args()
-    if not networks.get(opts.network):
+
+    # TODO shim for new CONFIG
+    opts.loglevel = CONFIG.get('logging','loglevel')
+    opts.debug = opts.loglevel  == "DEBUG"
+    opts.logformat = CONFIG.get('logging', 'logformat')
+
+    net = config_iface or opts.network
+
+    if not net:
         print(networks)
         raise OptionError(
             'Specified network does not exist. Known networks are listed to the output.',

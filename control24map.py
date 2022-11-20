@@ -157,25 +157,25 @@ MAPPING_TREE = {
                             },
                             0x10: {
                                 'Address': 'ShowValues',
-                                'SetMode': 'Values',
+                                'CmdClass': 'modemgr',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
                             0x11: {
                                 'Address': 'ShowGroup',
-                                'SetMode': 'Group',
+                                'CmdClass': 'modemgr',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
                             0x12: {
                                 'Address': 'ShowChannelNames',
-                                'SetMode': 'Names',
+                                'CmdClass': 'modemgr',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
                             0x13: {
                                 'Address': 'ShowInfo',
-                                'SetMode': 'Info',
+                                'CmdClass': 'modemgr',
                                 'Zone': 'Misc',
                                 'LED': True
                             },
@@ -746,12 +746,12 @@ MAPPING_TREE = {
                             0x12: {
                                 'Address': 'Scrub',
                                 'LED': True,
-                                'CmdClass': 'ReaJpot'
+                                'CmdClass': 'reavpot'
                             },
                             0x13: {
                                 'Address': 'Shuttle',
                                 'LED': True,
-                                'CmdClass': 'ReaJpot'
+                                'CmdClass': 'reavpot'
                             }
                         }
                     },
