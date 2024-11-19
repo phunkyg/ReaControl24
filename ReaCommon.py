@@ -2062,5 +2062,5 @@ def signal_handler(sig, stackframe):
 # main program if run in standalone mode
 def main(sessionclass):
     """Main function declares options and initialisation routine for OSC client."""
-    print 'Sorry support for launching client from command line is dropped'
+    print('Sorry support for launching client from command line is dropped')
     exit()

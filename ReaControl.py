@@ -57,14 +57,14 @@ C_PROTOCOL = (c_ubyte * 2)(0x88, 0x5F)
 # Timing values in seconds
 TIMING_KEEP_ALIVE = 10          # Delta time before a KA to desk is considered due
 TIMING_KEEP_ALIVE_LOOP = 1      # How often to check if a KA is due
-TIMING_BEFORE_ACKT = 0.0008     # Delta between packet arriving and ACK being sent
+TIMING_BEFORE_ACKT = 0.0008     # Delta between frame arriving and ACK being sent
 TIMING_MAIN_LOOP = 6            # Loop time for main, which does nothing
 TIMING_SHUTDOWN_ACTIONS = 0.5   # bit of wait time when shutting down
 TIMING_SNIFFER_TIMEOUT = 1000   # milliseconds passed to the pcap timeout
 TIMING_LISTENER_POLL = 2        # Poll time for MP Listener to wait for data
 TIMING_LISTENER_RECONNECT = 1   # Pause before a reconnect attempt is made
 TIMING_WAIT_DESC_ACK = 0.1      # Wait period for desk to ACK after send, before warning is logged
-TIMING_BACKOFF = 0.3            # Time to pause sending data to desk after a retry packet is recvd
+TIMING_BACKOFF = 0.3            # Time to pause sending data to desk after a retry frame is recvd
 
 # Control Constants
 
@@ -78,7 +78,7 @@ NETHANDLER = None
 PCAP_ERRBUF_SIZE = 256
 PCAP_SNAPLEN = 1038
 PCAP_PROMISC = 1
-PCAP_PACKET_LIMIT = -1  # infinite
+PCAP_frame_LIMIT = -1  # infinite
 PCAP_POLL_DELAY = 5
 PCAP_FILTER = '(ether dst %s or broadcast) and ether[12:2]=0x885f'
 
@@ -97,7 +97,7 @@ def compare_ctype_array(arr1, arr2):
 
 # START classes
 
-# C Structure classes for packet capture and decoding
+# C Structure classes for frame capture and decoding
 class MacAddress(Structure):
     """ctypes structure to let us get the vendor
     portion from the mac address more easily"""
@@ -139,12 +139,12 @@ class EthHeader(Structure):
         )
 
     def is_broadcast(self):
-        """Is this a broadcast packet i.e. destination is broadcast"""
+        """Is this a broadcast frame i.e. destination is broadcast"""
         return self.macdest.is_broadcast()
 
 class C24Header(BigEndianStructure):
     """ctypes structure to contain C24 header fields
-    that seem to appear common to all packets.
+    that seem to appear common to all frames.
     Length 14"""
     _pack_ = 1
     _fields_ = [
@@ -169,12 +169,12 @@ class C24Header(BigEndianStructure):
         )
 
     def is_retry(self):
-        """Is this a retry packet i.e. there is data in the retry field"""
+        """Is this a retry frame i.e. there is data in the retry field"""
         return self.retry != 0
 
 
 class C24BcastData(BigEndianStructure):
-    """class to cast c24 packet data to if it is a brodcast packet.
+    """class to cast c24 frame data to if it is a brodcast frame.
     to get the details out of it"""
     _pack_ = 1
     _fields_ = [
@@ -192,11 +192,11 @@ class C24BcastData(BigEndianStructure):
 
 
 def c24packet_factory(prm_tot_len=None, prm_data_len=None):
-    """dynamically build and return a packet class with the variable length
-    length packet data element in place. pkt_length is full length
+    """dynamically build and return a frame class with the variable length
+    length frame data element in place. pkt_length is full length
     including the 30 bytes of headers"""
     # Provide option to specify data or total length
-    # and derive all 3 lengths into the packet class def
+    # and derive all 3 lengths into the frame class def
     if prm_tot_len is None and not prm_data_len is None:
         req_data_len = prm_data_len
         req_tot_len = prm_data_len + 30
@@ -214,7 +214,7 @@ def c24packet_factory(prm_tot_len=None, prm_data_len=None):
             ("packetdata", c_ubyte * req_data_len)]
 
     class C24Packet(Union):
-        """allow addressing of the whole packet as a raw byte array"""
+        """allow addressing of the whole frame as a raw byte array"""
         _pack_ = 1
         _fields_ = [
             ("raw", c_ubyte * req_tot_len),
@@ -236,17 +236,17 @@ def c24packet_factory(prm_tot_len=None, prm_data_len=None):
             )
 
         def to_buffer(self):
-            """Provide the raw packet contents as a string buffer"""
+            """Provide the raw frame contents as a string buffer"""
             memaddr = addressof(self)
             sendbuf = string_at(memaddr, self.pkt_tot_len)
             return sendbuf
 
         def is_broadcast(self):
-            """Is this a broadcast packet i.e. is the ethernet header saying that"""
+            """Is this a broadcast frame i.e. is the ethernet header saying that"""
             return self.struc.ethheader.macdest.is_broadcast()
 
         def is_retry(self):
-            """Is this a retry packet i.e. is the C24 header saying that"""
+            """Is this a retry frame i.e. is the C24 header saying that"""
             return self.struc.c24header.is_retry()
 
     return C24Packet
@@ -342,7 +342,7 @@ class ManageListener(threading.Thread):
 
 
 class Sniffer(threading.Thread):
-    """Thread class to hold the packet sniffer loop
+    """Thread class to hold the frame sniffer loop
     and ensure it is interruptable"""
     #--MULTI refactor c24session to nethandler
     def __init__(self, nethandler):
@@ -353,8 +353,8 @@ class Sniffer(threading.Thread):
         network = self.nethandler.network.get('pcapname')
         # Set up the pcas session
         # comment from the lib:
-            # timeout_ms -- requests for the next packet will return None if the timeout
-            #               (in milliseconds) is reached and no packets were received
+            # timeout_ms -- requests for the next frame will return None if the timeout
+            #               (in milliseconds) is reached and no frames were received
             #               (Default: no timeout)
         self.nethandler.pcap_sess = self.nethandler.fpcapt.pcap(
             #timeout_ms=TIMING_SNIFFER_TIMEOUT
@@ -404,7 +404,7 @@ class NetworkHandler(object):
     c24cmds = COMMANDS
     # callbacks / event handlers (threaded)
     def packet_handler(self, timestamp, pkt_data):
-        """PCAP Packet Handler: Async method called on packet capture"""
+        """PCAP frame Handler: Async method called on frame capture"""
         log = logging.getLogger(__name__)
         broadcast = False
         pkt_len = len(pkt_data)
@@ -413,8 +413,8 @@ class NetworkHandler(object):
         packet = pcl()
         packet = pcl.from_buffer_copy(pkt_data)
         #Detailed traffic logging
-        trace(log, 'Packet Received: %s', str(packet))
-        # Decode any broadcast packets
+        trace(log, 'frame Received: %s', str(packet))
+        # Decode any broadcast frames
         if packet.is_broadcast():
             broadcast = True
             pbp = POINTER(C24BcastData)
@@ -430,9 +430,9 @@ class NetworkHandler(object):
                 src_session = DeviceSession(self, self.num_sessions, src_mac, bcast_data)
                 self.sessions[str(src_mac)] = src_session
             else:
-                log.warn('Dropping Non broadcast packet from new device! %s', str(src_mac))
+                log.warn('Dropping Non broadcast frame from new device! %s', str(src_mac))
                 return
-        #--MULTI despatch packet to sessions' handler
+        #--MULTI despatch frame to sessions' handler
         src_session.packet_handler(packet)
 
     # session instance methods
@@ -440,11 +440,11 @@ class NetworkHandler(object):
         """sesion wrapper around pcap_sendpacket
         so we can pass in session and trap error"""
         log = logging.getLogger(__name__)
-        trace(log, "Sending Packet of %d bytes: %s", pkt.pkt_tot_len, hexl(pkt.raw))
+        trace(log, "Sending frame of %d bytes: %s", pkt.pkt_tot_len, hexl(pkt.raw))
         buf = pkt.to_buffer()
         pcap_status = self.pcap_sess.sendpacket(buf)
         if pcap_status != pkt.pkt_tot_len:
-            log.warn("Error sending packet: %s", self.pcap_sess.geterr())
+            log.warn("Error sending frame: %s", self.pcap_sess.geterr())
             return False
         else:
             return True
@@ -517,7 +517,7 @@ class DeviceSession(object):
 
     # callbacks / event handlers (threaded)
     def packet_handler(self, packet):
-        """Device Session Packet Handler. If packet was for
+        """Device Session frame Handler. If frame was for
         this device then it will have been dispatched to here"""
         log = logging.getLogger(__name__)
         if not packet.is_broadcast():
@@ -532,13 +532,13 @@ class DeviceSession(object):
                 # Check to see if this is retry
                 if packet.is_retry():
                     self.current_retry_desk = retry = packet.struc.c24header.retry
-                    log.warn('%s Retry packets from desk: %d', self.session_name, retry)
+                    log.warn('%s Retry frames from desk: %d', self.session_name, retry)
                     # Try a send lock if desk is panicking, back off for a
                     # bit of time to let 'er breathe
                     self.sendlock.clear()
                     self.backoff = threading.Timer(TIMING_BACKOFF, self._backoff)
                     self.backoff.start()
-                # It is a genuine packet of commands so go ahead and process it
+                # It is a genuine frame of commands so go ahead and process it
                 cmdnumber = packet.struc.c24header.sendcounter
                 trace(log, '%s RECEIVED %d', self.session_name, cmdnumber)
                 # this counter changes to the value the DESK sends to us so we can ACK it
@@ -578,7 +578,7 @@ class DeviceSession(object):
 
     # session instance methods
     def send_packet(self, pkt):
-        """pass packet back to the network handler"""
+        """pass frame back to the network handler"""
         ok = self.parent.send_packet(pkt)
         if ok:
             self.pcap_last_sent = tick()
@@ -599,19 +599,19 @@ class DeviceSession(object):
         if c24cmd == self.c24cmds['ack']:
             pcp.struc.c24header.cmdcounter = self.cmdcounter
         else:
-            # This counter increments by number of commands we are sending in this/each packet
+            # This counter increments by number of commands we are sending in this/each frame
             self.sendcounter += ncmds
             pcp.struc.c24header.sendcounter = self.sendcounter
         return pcp
 
     def prepare_keepalive(self):
-        """session wrapper around keepalive packet"""
+        """session wrapper around keepalive frame"""
         keepalivedata = (c_ubyte * 1)()
         keepalive = self._prepare_packetr(keepalivedata, 1, 1)
         return keepalive
 
     def _prepare_ackt(self):
-        """session wrapper around ackt packet"""
+        """session wrapper around ackt frame"""
         ack = self._prepare_packetr(None, 0, 0, c24cmd=self.c24cmds['ack'])
         return ack
 
@@ -700,7 +700,7 @@ class DeviceSession(object):
         self.sendlock = threading.Event()
         self.sendlock.set()
         self.backoff = threading.Timer(TIMING_BACKOFF, self._backoff)
-        # build a re-usable Ethernet Header for sending packets
+        # build a re-usable Ethernet Header for sending frames
         self.ethheader = EthHeader()
         self.ethheader.macsrc = MacAddress.from_buffer_copy(self.parent.mac_computer)
         self.ethheader.macdest = self.mac_device
@@ -712,7 +712,7 @@ class DeviceSession(object):
         # Start a thread to listen to the process pipe
         self.thread_listener = ManageListener(self)
         self.thread_listener.start()
-        # Start a thread to keep sending packets to desk to keep alive
+        # Start a thread to keep sending frames to desk to keep alive
         self.thread_keepalive = KeepAlive(self)
         self.thread_keepalive.start()
 
@@ -925,14 +925,14 @@ def main():
         while True:
             time.sleep(TIMING_MAIN_LOOP)
     except ReaQuit:
-        print '**ReaQuit'
+        print('**ReaQuit')
     except KeyboardInterrupt:
-        print '**KeyboardInterrupt'
+        print('**KeyboardInterrupt')
     except Exception:
-        print '**UnhandledException'
+        print('**UnhandledException')
         raise
 
-    print '**Closing'
+    print('**Closing')
     NETHANDLER.close()
 
 
