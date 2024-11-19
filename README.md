@@ -1,16 +1,21 @@
-# Welcome to DEV_OtherDevices!
+## Welcome to Ftr_Version2!
 
-If you are here then you are probably have a device other than a Control24.
-This is an experimental new version with many new features, that has been overhauled to provide support for:
+This is the branch where we're trying to pull everything together for a fresh version,
+based on Python 3 and the newer pcap-ct library for Ethernet capture.
 
-* ProControl
-    * So far just the main unit
-* Other devices - contact PhunkyG for more info on getting your device supported!
+Also trialling a GUI for setting a configuration file for options rather than 
+command lines.
+
+If you have a device other than a Control24, the later maps and for Pro Control
+and multi-device support are to be included from DEV_OtherDevices
+
+This is a WIP for a new version with many new features, that has been overhauled to
+try to bring a more production feel to Rea Control
 
 
 # ReaControl
 
-Legacy Digidesign control surface protocol middleware for Reaper.
+Digidesign Control Surface protocol middleware for Reaper.
 
 This middleware allows you to use the Legacy Digidesign control surface hardware with Reaper, including Control24 and ProControl. 
 (From here on in, they will be called a 'Desk' for speed)
@@ -20,7 +25,9 @@ It will bring the Desk online and provide 2 way communiation with it, so you can
 
 ### Installing - OSX, macos, Linux
 
-Ensure the current or default python environment has a 2.7.x interpreter in the current path (enter 'python' at the command line to check), and install the pre-requisites into user environment using pip or similar
+__where we indicate versions of dependencies, we're taking them from what is avaioable at time of writing/release. You can try other versions but problems may occur, so use the general links to get an idea what versions are currently avaiable__
+
+Ensure the current or default python environment has a 3.x interpreter in the current path (enter 'python' at a command line to check this), and install the pre-requisites into user environment using pip or similar
 
 Example pip install command line:
 
@@ -30,28 +37,36 @@ pip install -r requirements.txt --user
 
 By default all log outputs will be created into the *logs* subdirectory below wherever you unpack/install the files, so choose somewhere that this can happen without issues.
 
-### Installing - Windows 10
+### Installing - Windows 11 & 10
 
 The pre-requisite installation process for Windows is quite a bit more involved, as the OS does not come supplied with python or packet capture libraries. We have provided an instruction video for this process [in the docs repository](https://github.com/phunkyg/ReaControl-docs)
 
-* Download and install latest 64 bit Python 2.7.x
+* Remove the pseudo-app that directs python to the windows store
+    * Start - search for: Manage App Execution Aliases
+    * Turn OFF any entries related to python
+* Download and install latest 64 bit Python 3.x
+    * We recommend NOT using the versions available from Microsoft Store
     * General Download Page: https://www.python.org/downloads
-    * Windows 64 bit 2.7.13 Web Installer: https://www.python.org/ftp/python/2.7.13/python-2.7.13.amd64.msi
-    * It is recommended to install python in the system drive, in a subfolder e.g. C:\python
+    * 3.12.7 Page includes downloads for all OSes: https://www.python.org/downloads/release/python-3127/
+    * Windows 64 bit release: https://www.python.org/ftp/python/3.12.7/python-3.12.7-amd64.exe
+    * It is recommended to install python, "for all users" so that the home folder gets located under "C:\Program Files\Python3xx"
     * In the installer options, at a minimum ensure that the following are set:
+        * Add python to the PATH (not essential but it will make life MUCH easier)
         * Install pip
         * Install for all users
 * Download and install Npcap 
     * Home Page: https://nmap.org/npcap/
-    * Current version of Main Installer: https://nmap.org/npcap/dist/npcap-0.99-r8.exe
-    * Make sure to tick the _WinPcap API-compatible mode_ which is off by default
-    * Don't install the loopback adapter unless you want it for another need
+    * Current version of Main Installer: https://npcap.com/dist/npcap-1.80.exe
+    * Make sure to tick the _WinPcap API-compatible mode_
 * Download the Npcap SDK
-    * Current version of SDK Download: https://nmap.org/npcap/dist/npcap-sdk-1.01.zip
+    * Current version of SDK Download: https://npcap.com/dist/npcap-sdk-1.13.zip
+
+
+WIP:
 * Download and install the c++ compiler for python: https://www.microsoft.com/en-us/download/details.aspx?id=44266
 * Download the sources from github for: pypcap (currently 1.2.1): https://github.com/pynetwork/pypcap/releases - 
 
-(Following is a re-statement of the procedure for 'installation from sources' of pypcap found at - https://github.com/pynetwork/pypcap/blob/master/docs/index.rst)
+__(Following is a re-statement of the procedure for 'installation from sources' of pypcap found at - https://github.com/pynetwork/pypcap/blob/master/docs/index.rst)__
 
 Choose a folder to work in: Creating an 'install' subfolder under where you unpacked this repo (ReaControl) is a reasonable choice.
 
