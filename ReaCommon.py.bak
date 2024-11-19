@@ -18,7 +18,7 @@ import netifaces
 import OSC
 
 if sys.platform.startswith('win'):
-    import winreg as wr  # pylint: disable=E0401
+    import _winreg as wr  # pylint: disable=E0401
 
 DAEMON_CONFS = ['conf/default/daemon_default.conf', 'conf/daemon.conf']
 
@@ -158,7 +158,7 @@ def findintree(obj, key):
     # code button addresses twice
     if key in obj:
         return obj[key]
-    for _, v in list(obj.items()):
+    for _, v in obj.items():
         if isinstance(v, dict):
             item = findintree(v, key)
             if item is not None:
@@ -208,12 +208,12 @@ class NetworkHelper(object):
         return '\n'.join(['{} {}'.format(
             key,
             data.get('name') or '')
-            for key, data in self.networks.items()])
+            for key, data in self.networks.iteritems()])
 
     def get_default(self):
         """return the name and first ip of whichever adapter
         is marked as default"""
-        default = [key for key, data in self.networks.items() if 'default' in data]
+        default = [key for key, data in self.networks.iteritems() if data.has_key('default')]
         if default:
             def_net = default[0]
             def_ip = self.networks[def_net].get('ip')[0].get('addr')
@@ -223,17 +223,17 @@ class NetworkHelper(object):
     def get(self, name):
         """get the full entry for a network by name
         but also look by friendly name if not an adapter name"""
-        if name in self.networks:
+        if self.networks.has_key(name):
             return self.networks[name]
-        results = [key for key, data in self.networks.items() if data.get('name') == name]
+        results = [key for key, data in self.networks.iteritems() if data.get('name') == name]
         if results:
             return self.networks[results[0]]
         return None
 
     def verify_ip(self, ipstr):
         """search for an adapter that has the ip address supplied"""
-        for key, data in self.networks.items():
-            if 'ip' in data:
+        for key, data in self.networks.iteritems():
+            if data.has_key('ip'):
                 for ipaddr in data['ip']:
                     if ipaddr.get('addr') == ipstr:
                         return key
@@ -245,7 +245,7 @@ class NetworkHelper(object):
         try:
             addr_l = netifaces.ifaddresses(ifname)[netifaces.AF_INET]
             return [{k: v.encode('ascii', 'ignore')
-                     for k, v in addr.items()}
+                     for k, v in addr.iteritems()}
                     for addr in addr_l]
         except KeyError:
             return None
@@ -270,7 +270,7 @@ class NetworkHelper(object):
             reg,
             r'SYSTEM\CurrentControlSet\Control\Network\{4D36E972-E325-11CE-BFC1-08002BE10318}'
         )
-        for key, val in networks.items():
+        for key, val in networks.iteritems():
             val['pcapname'] = '\\Device\\NPF_{}'.format(key)
             net_regkey = r'{}\Connection'.format(key)
             try:
@@ -306,8 +306,8 @@ class NetworkHelper(object):
             ips = NetworkHelper.get_ip_address(interface)
             if ips:
                 inner['ip'] = ips
-                if default_not_found and ('ignore' not in inner) and any(
-                        ['addr' in ip and 'peer' not in ip for ip in ips]):
+                if default_not_found and (not inner.has_key('ignore')) and any(
+                        [ip.has_key('addr') and not ip.has_key('peer') for ip in ips]):
                     default_not_found = False
                     inner['default'] = True
             results[interface] = inner
@@ -318,7 +318,7 @@ class NetworkHelper(object):
 
     @staticmethod
     def omit_ignore(net_dict):
-        return {k: v for k, v in net_dict.items() if 'ignore' not in v}
+        return {k: v for k, v in net_dict.iteritems() if not v.has_key('ignore')}
 
     @staticmethod
     def ipstr_to_tuple(ipstr):
@@ -365,11 +365,11 @@ class ModeManager(object):
         #  - Create an OSC message for any address
         self.mode = None
         first = None
-        for key, value in self.modes.items():
+        for key, value in self.modes.iteritems():
             if first is None:
                 first = key
             # Construct an OSC message for each address
-            if 'address' in value:
+            if value.has_key('address'):
                 value['msg'] = OSC.OSCMessage(value['address'])
             if value.get('default'):
                 self.actually_set_mode(key)
@@ -393,7 +393,7 @@ class ModeManager(object):
     def set_mode(self, mode):
         """directly set the mode to the key requested"""
         if self.is_valid_mode(mode):
-            if 'toggle' in self.modes[mode]:
+            if self.modes[mode].has_key('toggle'):
                 self.toggle_mode()
             else:
                 self.actually_set_mode(mode)
@@ -405,7 +405,7 @@ class ModeManager(object):
     def is_valid_mode(self, mode):
         """Boolean test to ensure mode is currently in the
         list of valid modes"""
-        return mode in self.modes
+        return self.modes.has_key(mode)
 
     def toggle_mode(self):
         """set the mode to the next one in order of the original
@@ -539,7 +539,7 @@ class ReaNav(ReaBase):
 
     def update(self):
         """Update button LEDs"""
-        for key, val in self.modemgr.modes.items():
+        for key, val in self.modemgr.modes.iteritems():
             addr = val.get('address')
             butval = int(key == self.modemgr.mode)
             self.desk.reabuttonled.set_btn(addr, butval)
@@ -739,7 +739,7 @@ class ReaButtonLed(ReaBase):
         Basically because too lazy to hand write a second
         map and keep them in step"""
         mybyts = list(byts)
-        for key, item in list(node.items()):
+        for key, item in node.items():
             addr = item.get('Address', '')
             # assume track token will be followed by track number
             if addr == 'track':
@@ -798,7 +798,7 @@ class ReaButtonLed(ReaBase):
     def set_btn(self, addr, val):
         """set button value"""
         # First transform entirely numeric address elements to @
-        lkpaddr = '/'.join(['@' if str(ad).isnumeric() else ad for ad in addr.split('/')])
+        lkpaddr = '/'.join(['@' if unicode(ad).isnumeric() else ad for ad in addr.split('/')])
         try:
             lkpbtn = self.mapping_osc[lkpaddr]
             self.log.debug("Button LED: %s %s", lkpaddr, lkpbtn)
@@ -1180,7 +1180,7 @@ class ReaJpot(ReaBase):
             'Scrub': {'address': '/jpot/scrub', 'default': True},
             'Shuttle': {'address': '/jpot/scrub'}
         }
-        for key, value in self.modes.items():
+        for key, value in self.modes.iteritems():
             value['msg'] = OSC.OSCMessage(value['address'])
             if value.get('default'):
                 self.mode = key
@@ -1206,7 +1206,7 @@ class ReaJpot(ReaBase):
     def _update_from_button(self, parsedcmd, addrs):
         if parsedcmd.get('Value') == 1:
             button = addrs[-1]
-            if button in self.modes:
+            if self.modes.has_key(button):
                 self.mode = button
                 self.log.info('ReaJpot set mode %s', button)
             else:
@@ -1501,7 +1501,7 @@ class _ReaAutomode(ReaBase):
         self.modes = dict(_ReaAutomode.automodes)
 
     def __str__(self):
-        mods = ['{}:{}'.format(key, value.get('state')) for key, value in self.modes.items()]
+        mods = ['{}:{}'.format(key, value.get('state')) for key, value in self.modes.iteritems()]
         return 'ReaAutomode track:{} byt:{} modes:{} '.format(
             self.track.track_number,
             self.cmdbytes[5],
@@ -1522,7 +1522,7 @@ class _ReaAutomode(ReaBase):
             first = None
             nxt = False
             moved = False
-            for key in list(self.modes.keys()):
+            for key in self.modes.keys():
                 if not first:
                     first = key
                 mode = self.modes.get(key)

@@ -486,7 +486,7 @@ class NetworkHandler(object):
         log = logging.getLogger(__name__)
         log.info("NetworkHandler closing")
         #--MULTI call a close for each session
-        for mac, sess in list(self.sessions.items()):
+        for mac, sess in self.sessions.items():
             log.info("Closing DeviceSession for %s", mac)
             sess.close()
 

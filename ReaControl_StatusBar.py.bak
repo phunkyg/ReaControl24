@@ -35,8 +35,8 @@ def debug(value, option):
 
 if __name__ == '__main__':
     main()
-    print(("Arguments count: {}".format(len(sys.argv))))
+    print("Arguments count: {}".format(len(sys.argv)))
     for i, arg in enumerate(sys.argv):
-        print(("Argument {}: {}".format(i,arg)))
+        print("Argument {}: {}".format(i,arg))
         handler(arg)
 

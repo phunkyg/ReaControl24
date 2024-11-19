@@ -39,7 +39,7 @@ TEST_PACKETS = [
 
 
 def log(msg, *args):
-    print((msg % args))
+    print(msg % args)
 
 def packet_handler(timestamp, pkt_data):
     """PCAP Packet Handler: Async method called on packet capture"""
@@ -98,11 +98,11 @@ class SnifferForEmulator(threading.Thread):
     def send_packet(self, pkt):
         """sesion wrapper around pcap_sendpacket
         so we can pass in session and trap error"""
-        print(("Sending Packet of {} bytes: {}".format(pkt.pkt_tot_len, hexl(pkt.raw))))
+        print("Sending Packet of {} bytes: {}".format(pkt.pkt_tot_len, hexl(pkt.raw)))
         buf = pkt.to_buffer()
         pcap_status = self.pcap_sess.sendpacket(buf)
         if pcap_status != pkt.pkt_tot_len:
-            print(("Error sending packet: {}".format( self.pcap_sess.geterr())))
+            print("Error sending packet: {}".format( self.pcap_sess.geterr()))
             return False
         else:
             return True

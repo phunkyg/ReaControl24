@@ -6,7 +6,7 @@
 import wx
 import sys
 if sys.version_info[0] == 2:
-    import configparser as configparser
+    import ConfigParser as configparser
 else:
     import configparser
 from ReaCommon import NetworkHelper, DAEMON_CONFS, get_cwd
@@ -217,16 +217,16 @@ class RccuFrame(wx.Frame):
 		config.add_section('paths')
 		config.add_section('logging')
 
-		config.set('daemon','network', 		'')
-		config.set('daemon','listen',		'')
-		config.set('daemon','listen_port',	'')
-		config.set('daemon','connect',		'')
-		config.set('daemon','connect_port', '')
-		config.set('daemon','debug',		'')
-		config.set('paths','logdir',		'')
-		config.set('paths','gitrepo_url',	'')
-		config.set('paths','reaperosc_dir', '')
-		config.set('logging','loglevel',    '')
+		config.set('daemon','network', 		u'')
+		config.set('daemon','listen',		u'')
+		config.set('daemon','listen_port',	u'')
+		config.set('daemon','connect',		u'')
+		config.set('daemon','connect_port', u'')
+		config.set('daemon','debug',		u'')
+		config.set('paths','logdir',		u'')
+		config.set('paths','gitrepo_url',	u'')
+		config.set('paths','reaperosc_dir', u'')
+		config.set('logging','loglevel',    u'')
 		return config
 
 
@@ -296,11 +296,11 @@ class RccuFrame(wx.Frame):
 		connect_port = self.fldConnectPort.GetValue()
 
 		if any([
-			'' == network,
-			'' == listen,
-			'' == listen_port,
-			'' == connect,
-			'' == connect_port
+			u'' == network,
+			u'' == listen,
+			u'' == listen_port,
+			u'' == connect,
+			u'' == connect_port
 		]):
 			self.rccu_statusbar.SetStatusText(
 				"Can't save file without all mandatory fields: network, listen, listen_port, connect, connect_port"
@@ -308,33 +308,33 @@ class RccuFrame(wx.Frame):
 			event.Skip()
 			return
 
-		if network != '':
+		if network != u'':
 			config.set('daemon','network',network)
-		if listen != '':
+		if listen != u'':
 			config.set('daemon','listen',listen)
-		if listen_port != '':
+		if listen_port != u'':
 			config.set('daemon','listen_port',listen_port)
-		if connect != '':
+		if connect != u'':
 			config.set('daemon','connect',connect)
-		if connect_port != '':
+		if connect_port != u'':
 			config.set('daemon','connect_port', connect_port)
 
 		debug = self.chkDebugSwitch.GetValue()
 		config.set('daemon','debug',debug)
 		logdir = self.fldLoggingPath.GetValue()
-		if logdir != '':
+		if logdir != u'':
 			config.set('paths','logdir',logdir)
 		gitrepo_url = self.fldGitPath.GetValue()
-		if gitrepo_url != '':
+		if gitrepo_url != u'':
 			config.set('paths','gitrepo_url', gitrepo_url)
 		reaperosc_dir = self.fldReaperOSCPath.GetValue()
-		if reaperosc_dir != '':
+		if reaperosc_dir != u'':
 			config.set('paths','reaperosc_dir', reaperosc_dir)
 		loglevel = self.choiceLoglevel.GetStringSelection()
-		if loglevel != '':
+		if loglevel != u'':
 			config.set('logging','loglevel', loglevel)
 		reacontrol_dir = self.fldReaControlPath.GetValue()
-		if reacontrol_dir != '':
+		if reacontrol_dir != u'':
 			config.set('paths','reacontrol_dir', reacontrol_dir)
 
 
@@ -379,10 +379,10 @@ class RccuFrame(wx.Frame):
 		self.networkhelper = NetworkHelper()
 		# clear and populate devices list from network helper
 		self.networks = self.networkhelper.list_networks()
-		self.default_network = next((obj for obj in self.networks.items() if obj[1].get('default')))
+		self.default_network = next((obj for obj in self.networks.iteritems() if obj[1].get('default')))
 		self.cbbDeviceName.Clear()
 		self.cbbListen.Clear()
-		for key, obj in self.networks.items():
+		for key, obj in self.networks.iteritems():
 			self.cbbDeviceName.Append(key)
 			ip = obj.get('ip')
 			if ip:
